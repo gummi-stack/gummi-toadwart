@@ -1,0 +1,162 @@
+#!/bin/bash
+LXC_BASE="child"
+
+UNION="overlayfs"
+
+on_die()
+{
+    # print message
+    #
+    echo "Dying..."
+
+    # Need to exit the script explicitly when done.
+    # Otherwise the script would live on, until system
+    # realy goes down, and KILL signals are send.
+    #
+    exit 0
+}
+
+#trap 'on_die' TERM
+
+setup_container()
+{
+	echo "Setting up ephemeral container"
+	OVERLAY_DIR=`mktemp -d /tmp/lxc-lp-XXXXXXX`
+	sudo mount -t tmpfs none $OVERLAY_DIR
+
+	LXC_DIR=`sudo mktemp -d --tmpdir=/var/lib/lxc $LXC_BASE-temp-XXXXXXX`
+	LXC_NAME=`basename $LXC_DIR`
+	do_mount "/var/lib/lxc/$LXC_BASE" "${OVERLAY_DIR}" $LXC_DIR
+	EPHEMERAL_BIND_DIR=$LXC_DIR/ephemeralbind
+	sudo mkdir $EPHEMERAL_BIND_DIR
+	sudo mount -t tmpfs none $EPHEMERAL_BIND_DIR
+	LXC_MOUNTED=1
+	echo "Ephemeral node $LXC_NAME mounted"
+#	echo $LXC_NAME	
+	#ls -la $LXC_DIR
+#	mount
+
+	# Update the ephemeral lxc's configuration to reflect the new container name.
+	sudo sed -i -e "s/$LXC_BASE/$LXC_NAME/" $LXC_DIR/fstab $LXC_DIR/config $LXC_DIR/rootfs/etc/hostname $LXC_DIR/rootfs/etc/hosts
+	# Update the fstab to have all bind mounts be ephemeral.
+	#sudo cp $LXC_DIR/fstab $LXC_DIR/fstab.old
+	#cat $LXC_DIR/fstab
+	update_config
+}
+update_config() {
+
+    c=$LXC_DIR/config
+    # change hwaddrs
+    sudo mv ${c} ${c}.old
+    #ip = "172.16.226"$[($RANDOM % 100 + 100)]
+    (
+    while read line; do
+	if [ "${line:0:18}" = "lxc.network.hwaddr" ]; then
+	    echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
+	else
+	    echo "$line"
+	fi
+    done
+    ) < ${c}.old | sudo tee ${c} >/dev/null
+    sudo rm -f ${c}.old
+}
+
+start_container()
+{
+    action=$1
+    slug=$2
+    src=$3
+    worker=$3
+
+   echo "Starting up the container..."
+
+ #  ls -ls $LXC_DIR/rootfs/dev/
+
+   rm $LXC_DIR/rootfs/dev/shm
+   mkdir $LXC_DIR/rootfs/dev/shm
+
+
+#   echo "route add default gw 172.16.226.2 " >> $LXC_DIR/rootfs/etc/rc.local
+
+#echo
+#mount
+#echo
+
+   APP_DIR=$LXC_DIR/rootfs/app
+    mkdir -p $APP_DIR
+#   echo "Copying application source"
+#   cp -r /home/bender/testing/ $APP_DIR
+#    CMD="/init $action $slug $worker"
+#   sudo lxc-execute -n $LXC_NAME -- $CMD
+
+    SLUG_NAME=$slug
+    SLUG_FILE=/slugs/$SLUG_NAME.tar.gz
+
+    lxc-execute -n $LXC_NAME -- bash
+    return
+
+    if [ $action = "run" ]; then
+	#TODO propasovat enviroment ? 
+       tar -C $APP_DIR -xzf $SLUG_FILE
+       CMD="/init $action $worker"
+       lxc-execute -n $LXC_NAME -- $CMD | rlogr -s lxc-exec -t
+
+
+    fi
+
+    if [ $action = "compile" ]; then
+       echo "Copying application source"
+	if [ ! -d $src ]; then
+	   echo ">>>>>> Missing src dir"
+	    exit 1
+	fi
+       #cp -r /home/bender/testing/* $APP_DIR
+	#echo ">>>>>>>>>>$src"
+
+	#exit 1
+       cp -r $src/* $APP_DIR
+       CMD="/init $action"
+       lxc-execute -n $LXC_NAME -- $CMD
+
+        SLUG_NAME=$slug
+	make_slug
+    fi
+
+
+
+}
+
+
+make_slug() {
+    rm -fr $APP_DIR/.git
+
+    echo "> Slug size: $(du -hsc $APP_DIR | grep total)  $SLUG_NAME"
+
+    tar -czf $SLUG_FILE -C $APP_DIR  .
+
+}
+
+do_mount() {
+   lower=$1
+   upper=$2
+   target=$3
+   if [ $UNION = "aufs" ]; then
+       sudo mount -t aufs -o br=${upper}=rw:${lower}=ro,noplink none ${target}
+   else
+       sudo mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} none ${target}
+   fi
+}
+
+stop_container()
+{
+	echo "Stopping lxc" >&2
+	sudo umount $EPHEMERAL_BIND_DIR
+	sudo umount $LXC_DIR
+	sudo umount $OVERLAY_DIR
+	sudo rmdir $LXC_DIR
+	sudo rmdir $OVERLAY_DIR
+}
+
+setup_container
+start_container $1 $2 $3
+stop_container
