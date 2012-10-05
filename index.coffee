@@ -3,11 +3,23 @@ util = require 'util'
 fs = require 'fs'
 {spawn, exec} = require('child_process')
 net = require 'net'
+procfile = require 'procfile'
 
 redis = require('redis-url').connect()
+#mongodb = require 'mongodb'
 
+mongoFactory = require 'mongo-connection-factory'
+
+mongoUrl = "mongodb://localhost/gummi"
 
 Lxc = require './lib/lxc'
+
+#server = null
+#col
+#server = new mongodb.Server "localhost", 27017, {}
+#new mongodb.Db('gummi', server, {}).open (err, client) ->
+#	throw err if err
+#	collection = new mongodb.Collection client, 'builds'
 
 
 # lxc.setup (name)->
@@ -47,6 +59,45 @@ app.post '/', (req, res)->
 			res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
 
 
+app.get '/apps/:app/:branch/restart', (req, res) ->
+	p = req.params
+	mongoFactory.db mongoUrl, (err, db) ->
+		db.collection 'builds', (err, collection) ->
+			q =
+				app: p.app
+				branch: p.branch
+			collection.find(q).sort(timestamp: -1).limit(1).toArray (err, results) ->
+				result = results[0]
+
+				lxc = new Lxc
+
+				lxc.on 'data', (data) ->
+					util.log data
+
+				lxc.on 'error', (data) ->
+					util.log 'ERR: ' + data
+
+				lxc.on 'exit', (code) ->
+					util.log 'EXIT: ' + code
+
+
+				lxc.setup (name)->
+					approot = "#{lxc.root}app"
+					fs.mkdirSync approot
+					file = result.slug
+					
+					exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
+
+						files = fs.readdirSync approot
+						util.log util.inspect files
+
+						command = '/buildpacks/startup /app run ' + result.procfile.web.command + ' ' + result.procfile.web.options.join ' '
+						res.end()
+						lxc.exec command, ( exitCode ) ->
+							lxc.dispose () ->
+
+
+
 app.get '/git/:repo/:branch/:rev', (req, res) ->
 	p = req.params
 	fileName = "#{p.repo}-#{p.branch}-#{p.rev}"
@@ -64,12 +115,12 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 
 
 		lxc.setup (name)->
-			util.log "lxc name #{name}" 
-			res.write "lxc name #{name}\n" 
+			util.log "lxc name #{name}"
+			res.write "lxc name #{name}\n"
 			
-			util.log 
-			approot = "#{lxc.root}app" 
-			fs.mkdirSync approot 
+			util.log
+			approot = "#{lxc.root}app"
+			fs.mkdirSync approot
 			
 			util.log  "tar -C #{approot} -xvzf #{file}"
 			
@@ -78,18 +129,38 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 				files = fs.readdirSync approot
 				util.log util.inspect files
 
-				procfile = fs.readFileSync("#{approot}/Procfile").toString()
-				console.log procfile
+				try
+					procData = fs.readFileSync("#{approot}/Procfile").toString()
+					procData = procfile.parse procData
+
+				catch e
+					res.write "ERR: Missing procfile\n"
+					return exit 1
+
+							
+				buildData =
+					app: p.repo
+					branch: p.branch
+					rev: p.rev
+					timestamp: new Date
+					slug: slug
+					procfile: procData
 
 				lxc.exec '/buildpacks/startup /app', ( exitCode ) ->
 
 					exec "tar -Pczf #{slug} -C #{approot} .", (error, stdout, stderr) ->
-						
-			
-#						lxc.dispose ->
-#							util.log "lxc name #{name} - disposed"
-#							res.write "lxc name #{name} - disposedXXX\n"
-						res.end( "94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n" )  #send file
+						mongoFactory.db mongoUrl, (err, db) ->
+							db.collection 'builds', (err, collection) ->
+								collection.insert buildData
+
+						exit exitCode
+
+		exit = ( exitCode ) ->
+			lxc.dispose ->
+				res.end( "94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n" )
+
+
+
 
 	
 app.listen 80

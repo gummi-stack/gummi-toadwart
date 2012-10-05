@@ -10,7 +10,7 @@ manager = __dirname + "/../manage-ephemeral.sh"
 ## TODO sanitize command && ; " etc...  just path
 
 class Lxc extends EventEmitter
-	constructor: ->
+	constructor: () ->
 
 	setup: (cb) =>
 		exec "#{manager} setup", (err, stdout, stderr) =>
@@ -21,7 +21,6 @@ class Lxc extends EventEmitter
 			
 
 	exec: (command, cb) =>
-		util.log util.inspect [manager, @name, command]
 		p = spawn 'setsid', [manager, 'run', @name, '--', command]
 		p.stdout.on 'data', (data) =>
 			@emit 'data', data
@@ -32,7 +31,8 @@ class Lxc extends EventEmitter
 			@emit 'exit', code
 			cb( code )
 		@process = p
-	
+
+
 	rendezvous: (command, cb) =>
 		server = net.createServer (socket) =>
 			pty = require 'pty.js'
