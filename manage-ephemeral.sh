@@ -1,6 +1,7 @@
 #!/bin/bash
 
 
+
 LXC_BASE="child"
 UNION="overlayfs"
 
@@ -153,7 +154,8 @@ do_mount() {
 
 clean_container()
 {
-	#echo "Stopping lxc" >&2
+echo "Stopping lxc" 
+# >&2
 	LXC_NAME=$1
 	setup_variables
 	
@@ -212,7 +214,7 @@ elif [ "$action" = "run" ]; then
 	fi
 	run_container
 	#echo "Koncim"
-	clean_container $LXC_NAME
+	#clean_container $LXC_NAME
 	exit 1
 	
 elif [ "$action" = "clean" ]; then

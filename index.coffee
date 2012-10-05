@@ -4,6 +4,9 @@ fs = require 'fs'
 {spawn, exec} = require('child_process')
 net = require 'net'
 
+redis = require('redis-url').connect()
+
+
 Lxc = require './lib/lxc'
 
 
@@ -17,7 +20,7 @@ Lxc = require './lib/lxc'
 # 	
 
 
-app = express.createServer()
+app = express()
 #app.use express.bodyParser()
 
 app.post '/', (req, res)->
@@ -46,44 +49,47 @@ app.post '/', (req, res)->
 
 app.get '/git/:repo/:branch/:rev', (req, res) ->
 	p = req.params
-	file = "#{p.repo}-#{p.branch}-#{p.rev}"
-	file = "/shared/git-archive/#{file}.tar.gz"
+	fileName = "#{p.repo}-#{p.branch}-#{p.rev}"
+	file = "/shared/git-archive/#{fileName}.tar.gz"
+	slug = "/shared/slugs/#{fileName}.tgz"
 
 	req.on 'end', () ->
 		lxc = new Lxc
+
+		lxc.on 'data', (data) ->
+			res.write data
+
+		lxc.on 'error', (data) ->
+			res.write data
+
 
 		lxc.setup (name)->
 			util.log "lxc name #{name}" 
 			res.write "lxc name #{name}\n" 
 			
-			
-			# port = lxc.rendezvous command, ->
-			# 	util.log "command end" 
 			util.log 
-			approot = "#{lxc.root}/app/" 
+			approot = "#{lxc.root}app" 
 			fs.mkdirSync approot 
 			
 			util.log  "tar -C #{approot} -xvzf #{file}"
 			
-			exec "tar -C #{approot} -xzf #{file}", (error, stdout, stderr) ->
-				util.log error if error
-				util.log stdout if stdout
-				util.log stderr if stderr
-			
+			exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
+
 				files = fs.readdirSync approot
-			
-				#res.write lxc.root + "\n"
-			
 				util.log util.inspect files
 
-				lxc.exec '/buildpacks/startup /app', ->
-					util.log "command end" 
-			
-					lxc.dispose ->
-						util.log "lxc name #{name} - disposed" 
-						res.write "lxc name #{name} - disposed\n"
+				procfile = fs.readFileSync("#{approot}/Procfile").toString()
+				console.log procfile
 
-						res.end()  #send file
+				lxc.exec '/buildpacks/startup /app', ( exitCode ) ->
+
+					exec "tar -Pczf #{slug} -C #{approot} .", (error, stdout, stderr) ->
+						
+			
+#						lxc.dispose ->
+#							util.log "lxc name #{name} - disposed"
+#							res.write "lxc name #{name} - disposedXXX\n"
+						res.end( "94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n" )  #send file
 
 	
 app.listen 80

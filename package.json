@@ -4,7 +4,11 @@
   "main": "index.coffee",
   "dependencies": {
     "express": "*",
-    "pty.js": "*"
+    "pty.js": "*",
+	"redis": "*",
+	"hiredis": "*",
+	"redis-url": "*",
+	"procfile": "*"
   },
   "license": "BSD"
 }

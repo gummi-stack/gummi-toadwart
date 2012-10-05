@@ -2,13 +2,14 @@ express = require 'express'
 util = require 'util'
 fs = require 'fs'
 net = require 'net'
+EventEmitter = require('events').EventEmitter
 {spawn, exec} = require('child_process')
 
 manager = __dirname + "/../manage-ephemeral.sh"
 
 ## TODO sanitize command && ; " etc...  just path
 
-class Lxc
+class Lxc extends EventEmitter
 	constructor: ->
 
 	setup: (cb) =>
@@ -20,15 +21,16 @@ class Lxc
 			
 
 	exec: (command, cb) =>
+		util.log util.inspect [manager, @name, command]
 		p = spawn 'setsid', [manager, 'run', @name, '--', command]
-		p.stdout.on 'data', (data) ->
-			util.log 'stdout ' + data
-		p.stderr.on 'data', (data) ->
-			util.log 'stderr ' + data
+		p.stdout.on 'data', (data) =>
+			@emit 'data', data
+		p.stderr.on 'data', (data) =>
+			@emit 'error', data
 
 		p.on 'exit', (code) =>
-			util.log code  + ' ---konec'
-			cb()
+			@emit 'exit', code
+			cb( code )
 		@process = p
 	
 	rendezvous: (command, cb) =>
