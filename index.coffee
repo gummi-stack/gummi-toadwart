@@ -24,7 +24,6 @@ app = express()
 #app.use express.bodyParser()
 
 app.post '/', (req, res)->
-	
 	buffer = ''
 	req.on 'data', (data) ->
 		buffer += data
@@ -35,17 +34,12 @@ app.post '/', (req, res)->
 		command = data.command
 		return unless command
 		util.log 'Starting rendezvous: ' + command
-	
 
 		lxc.setup (name)->
-			util.log "lxc name #{name}" 
-			port = lxc.rendezvous command, ->
-				util.log "command end" 
-
-				lxc.dispose ->
-					util.log "lxc name #{name} - disposed" 
-			res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
-
+			util.log "lxc name #{name}"
+			lxc.rendezvous command, (port) ->
+				console.log "::#{port}"
+				res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
 
 app.get '/git/:repo/:branch/:rev', (req, res) ->
 	p = req.params
@@ -92,8 +86,8 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 						res.end( "94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n" )  #send file
 
 	
-app.listen 80
-util.log 'server listening on 80'
+app.listen 81
+util.log 'server listening on 81'
 
 
 # 
