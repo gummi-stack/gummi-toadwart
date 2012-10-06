@@ -46,7 +46,7 @@ app.post '/', (req, res)->
 		command = data.command
 		return unless command
 		util.log 'Starting rendezvous: ' + command
-
+		###### TODO rozbalit appku
 		lxc.setup (name)->
 			util.log "lxc name #{name}"
 			lxc.rendezvous command, (port) ->
@@ -92,6 +92,12 @@ app.get '/ps/kill', (req, res) ->
 app.get '/ps/status', (req, res) ->
 	exec "ps #{req.query.pid}", (error, stdout, stderr) ->
 		res.end stdout
+
+app.get '/ps/statusall', (req, res) ->
+	exec "ps | grep lxc", (error, stdout, stderr) ->
+		res.end stdout
+
+
 
 
 app.get '/git/:repo/:branch/:rev', (req, res) ->

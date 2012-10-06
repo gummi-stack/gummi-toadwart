@@ -3,7 +3,7 @@ util = require 'util'
 fs = require 'fs'
 net = require 'net'
 EventEmitter = require('events').EventEmitter
-{fork, exec} = require('child_process')
+{spawn, fork, exec} = require('child_process')
 
 manager = __dirname + "/../manage-ephemeral.sh"
 
