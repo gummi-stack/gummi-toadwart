@@ -114,6 +114,7 @@ start_container()
 	#TODO propasovat enviroment ? 
        tar -C $APP_DIR -xzf $SLUG_FILE
        CMD="/init $action $worker"
+	   echo "SDSDSDSDSDSDSD"
        lxc-execute -n $LXC_NAME -- $CMD | rlogr -s lxc-exec -t
 
 
@@ -131,7 +132,7 @@ start_container()
 	#exit 1
        cp -r $src/* $APP_DIR
        CMD="/init $action"
-       lxc-execute -n $LXC_NAME -- $CMD
+       lxc-execute -n $LXC_NAME -- $CMD | /root/toadwart/rlogr/rlogr -t -s nevim
 
         SLUG_NAME=$slug
 	make_slug
@@ -180,7 +181,7 @@ run_container()
 	
 ##	lxc-execute -s lxc.console=none -n child -- bash
 	
-	lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD "
+	lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " | /root/toadwart/rlogr/rlogr -t -s netusim
 
 
     # lxc-execute -s lxc.console=none -n $LXC_NAME -- bash -c ". /root/.gummi; su -p user -c \"export XXX=10;$CMD\""
