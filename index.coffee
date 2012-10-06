@@ -36,66 +36,66 @@ app = express()
 #app.use express.bodyParser()
 
 app.post '/', (req, res)->
-	
 	buffer = ''
 	req.on 'data', (data) ->
 		buffer += data
 	req.on 'end', () ->
 		lxc = new Lxc
-		
+
 		data = JSON.parse buffer
 		command = data.command
 		return unless command
 		util.log 'Starting rendezvous: ' + command
-	
+
 
 		lxc.setup (name)->
-			util.log "lxc name #{name}" 
+			util.log "lxc name #{name}"
 			port = lxc.rendezvous command, ->
-				util.log "command end" 
+				util.log "command end"
 
 				lxc.dispose ->
-					util.log "lxc name #{name} - disposed" 
+					util.log "lxc name #{name} - disposed"
 			res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
 
 
-app.get '/apps/:app/:branch/restart', (req, res) ->
-	p = req.params
-	mongoFactory.db mongoUrl, (err, db) ->
-		db.collection 'builds', (err, collection) ->
-			q =
-				app: p.app
-				branch: p.branch
-			collection.find(q).sort(timestamp: -1).limit(1).toArray (err, results) ->
-				result = results[0]
+app.get '/ps/start', (req, res) ->
+	lxc = new Lxc
 
-				lxc = new Lxc
+	lxc.on 'data', (data) ->
+		util.log data
 
-				lxc.on 'data', (data) ->
-					util.log data
+	lxc.on 'error', (data) ->
+		util.log 'ERR: ' + data
 
-				lxc.on 'error', (data) ->
-					util.log 'ERR: ' + data
+	lxc.on 'exit', (code) ->
+		util.log 'EXIT: ' + code
 
-				lxc.on 'exit', (code) ->
-					util.log 'EXIT: ' + code
+	lxc.setup (name)->
+		approot = "#{lxc.root}app"
+		fs.mkdirSync approot
+
+		file = req.params.slug
+		env = req.params.env
+		cmd = req.params.cmd
+
+		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
+			res.json
+				pid: lxc.process.pid
+				name: lxc.name
+			lxc.exec '/buildpacks/startup /app run ' + cmd, (exitCode) ->
+				lxc.dispose () ->
 
 
-				lxc.setup (name)->
-					approot = "#{lxc.root}app"
-					fs.mkdirSync approot
-					file = result.slug
-					
-					exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
+app.get '/ps/kill', (req, res) ->
+	process.kill(req.params.pid * -1)
+	lxc = new Lxc req.params.name
+	lxc.dispose () ->
+		res.end 'je po nem Jime'
 
-						files = fs.readdirSync approot
-						util.log util.inspect files
 
-						command = '/buildpacks/startup /app run ' + result.procfile.web.command + ' ' + result.procfile.web.options.join ' '
-						res.end()
-						lxc.exec command, ( exitCode ) ->
-							lxc.dispose () ->
-
+app.get '/ps/status', (req, res) ->
+	exec "ps #{req.params.pid}", (error, stdout, stderr) ->
+		res.end stdout
 
 
 app.get '/git/:repo/:branch/:rev', (req, res) ->
@@ -117,15 +117,14 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 		lxc.setup (name)->
 			util.log "lxc name #{name}"
 			res.write "lxc name #{name}\n"
-			
+
 			util.log
 			approot = "#{lxc.root}app"
 			fs.mkdirSync approot
-			
-			util.log  "tar -C #{approot} -xvzf #{file}"
-			
-			exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
 
+			util.log "tar -C #{approot} -xvzf #{file}"
+
+			exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
 				files = fs.readdirSync approot
 				util.log util.inspect files
 
@@ -137,7 +136,7 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 					res.write "ERR: Missing procfile\n"
 					return exit 1
 
-							
+
 				buildData =
 					app: p.repo
 					branch: p.branch
@@ -146,8 +145,7 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 					slug: slug
 					procfile: procData
 
-				lxc.exec '/buildpacks/startup /app', ( exitCode ) ->
-
+				lxc.exec '/buildpacks/startup /app', (exitCode) ->
 					exec "tar -Pczf #{slug} -C #{approot} .", (error, stdout, stderr) ->
 						mongoFactory.db mongoUrl, (err, db) ->
 							db.collection 'builds', (err, collection) ->
@@ -155,14 +153,11 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 
 						exit exitCode
 
-		exit = ( exitCode ) ->
+		exit = (exitCode) ->
 			lxc.dispose ->
-				res.end( "94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n" )
+				res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
 
 
-
-
-	
 app.listen 80
 util.log 'server listening on 80'
 
@@ -204,22 +199,19 @@ util.log 'server listening on 80'
 
 return
 
-processFile = "#{__dirname}/processes.json" 
-processes = {}			
+processFile = "#{__dirname}/processes.json"
+processes = {}
 
 loadProcesses = ->
 	x = fs.readFileSync processFile
 	processes = JSON.parse x
-	
-loadProcesses()	
+
+loadProcesses()
 #util.log util.inprocesses 
 
 saveProcesses = ->
-	fs.writeFileSync processFile, JSON.stringify processes 
+	fs.writeFileSync processFile, JSON.stringify processes
 	util.log util.inspect processes
-
-
-
 
 
 app = express.createServer()
@@ -231,40 +223,39 @@ app.get '/', (req, res)->
 
 app.get '/kill/:id', (req, res)->
 	#req.params.id
-#    process.exit()
-
+	#    process.exit()
 	p = processes[req.params.id]
 	return unless p
-	
+
 	delete processes[req.params.id]
 	saveProcesses()
-	
-	x = process.kill(-p.pid,'SIGHUP')
+
+	x = process.kill(-p.pid, 'SIGHUP')
 	util.log util.inspect x
 	res.send 'zabito': "x"
-	
-	
+
+
 app.get '/start/:slug', (req, res)->
 	res.send('user ' + req.params.slug)
 
-    
-#    spawn 'php www/index.php ' + presenter
 
-	actions = ['/home/bender/start-ephemeral','run', req.params.slug]
+	#    spawn 'php www/index.php ' + presenter
+
+	actions = ['/home/bender/start-ephemeral', 'run', req.params.slug]
 	p = spawn 'setsid', actions
 	#util.log util.inspect p
-	
+
 	processes[p.pid] = {
-		pid: p.pid
-		slug: req.params.slug
+	pid: p.pid
+	slug: req.params.slug
 	}
 	saveProcesses()
-	
+
 	pi = processes[p.pid]
-	
+
 	pi.stdout = ''
 	pi.stderr = ''
-	
+
 	res.send('user ' + req.params.slug + "pid:   " + p.pid)
 	p.stdout.on 'data', (data) ->
 		util.log '' + data
@@ -274,10 +265,10 @@ app.get '/start/:slug', (req, res)->
 	p.stderr.on 'data', (data) ->
 		util.log 'stderr: ' + data
 		pi.stderr += data
-		
+
 	p.on 'exit', (code) ->
 		util.log 'child process exited with code ' + code
-    
+
 
 app.listen 80
 util.log 'server listening on 80 --'
