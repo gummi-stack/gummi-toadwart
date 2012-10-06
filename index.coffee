@@ -5,6 +5,17 @@ fs = require 'fs'
 net = require 'net'
 procfile = require 'procfile'
 
+dhcp =
+	ip: [ 10, 1, 69, 49 ]
+	mask: '255.255.255.0'
+	route: '10.1.69.254'
+	get: ->
+		dhcp.ip[3]++
+		throw Error 'IP pool is empty' if dhcp.ip[3] > 99
+		ip: dhcp.ip.join '.'
+		mask: dhcp.mask
+		route: dhcp.route
+
 redis = require('redis-url').connect()
 #mongodb = require 'mongodb'
 
@@ -47,8 +58,7 @@ app.post '/', (req, res)->
 		return unless command
 		util.log 'Starting rendezvous: ' + command
 
-
-		lxc.setup (name)->
+		lxc.setup dhcp.get(), (name) ->
 			util.log "lxc name #{name}"
 			port = lxc.rendezvous command, ->
 				util.log "command end"
@@ -70,22 +80,21 @@ app.get '/ps/start', (req, res) ->
 	lxc.on 'exit', (code) ->
 		util.log 'EXIT: ' + code
 
-	lxc.setup (name)->
+	lxc.setup dhcp.get(), (name) ->
 		approot = "#{lxc.root}app"
 		fs.mkdirSync approot
-		
+
 		file = req.query.slug
 		env = req.query.env
 		cmd = req.query.cmd
 		console.log "tar -C #{approot}/ -xzf #{file}"
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
 			lxc.exec '/buildpacks/startup /app run ' + cmd, (exitCode) ->
-					lxc.dispose () ->
+				lxc.dispose () ->
 			res.json
 				pid: lxc.process.pid
+				ip: dhcp.ip.join '.'
 				name: lxc.name
-				a: stdout
-				b: stderr
 
 app.get '/ps/kill', (req, res) ->
 	process.kill(req.query.pid * -1)

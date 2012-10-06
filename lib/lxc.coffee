@@ -12,8 +12,8 @@ manager = __dirname + "/../manage-ephemeral.sh"
 class Lxc extends EventEmitter
 	constructor: ( @name ) ->
 
-	setup: (cb) =>
-		exec "#{manager} setup", (err, stdout, stderr) =>
+	setup: (lan, cb) =>
+		exec "LXC_IP=#{lan.ip} LXC_MASK=#{lan.mask} LXC_ROUTE=#{lan.route} #{manager} setup", (err, stdout, stderr) =>
 			@name = '' + stdout
 			@name = @name.replace "\n", ""
 			@root = "/var/lib/lxc/#{@name}/rootfs/"
