@@ -10,7 +10,7 @@ manager = __dirname + "/../manage-ephemeral.sh"
 ## TODO sanitize command && ; " etc...  just path
 
 class Lxc extends EventEmitter
-	constructor: () ->
+	constructor: ( @name ) ->
 
 	setup: (cb) =>
 		exec "#{manager} setup", (err, stdout, stderr) =>
