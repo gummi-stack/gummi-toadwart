@@ -83,9 +83,14 @@ app.get '/ps/start', (req, res) ->
 		fs.mkdirSync approot
 
 		file = req.query.slug
-		env = req.query.env
+		env = JSON.parse req.query.env
 		cmd = req.query.cmd
 		console.log "tar -C #{approot}/ -xzf #{file}"
+		for key, val of env
+		    util.log key, val
+		    process.env[key] = val	
+
+		process.env.FFF='joooooo'
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
 			lxc.exec '/buildpacks/startup /app run ' + cmd, (exitCode) ->
 				lxc.dispose () ->
@@ -128,7 +133,7 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 			res.write data
 
 
-		lxc.setup (name)->
+		lxc.setup dhcp.get(), (name)->
 			util.log "lxc name #{name}"
 			res.write "lxc name #{name}\n"
 
