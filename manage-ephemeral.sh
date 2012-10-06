@@ -76,6 +76,11 @@ update_config() {
     done
     ) < ${c}.old | sudo tee ${c} >/dev/null
     sudo rm -f ${c}.old
+
+    echo CFCFCFCFCFCF
+    echo $LXC_IP
+    echo $LXC_MASK
+    echo $LXC_ROUTE
 }
 
 start_container()
