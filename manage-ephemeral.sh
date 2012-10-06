@@ -181,7 +181,9 @@ run_container()
 	
 ##	lxc-execute -s lxc.console=none -n child -- bash
 	
-	lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " | /root/toadwart/rlogr/rlogr -t -s netusim
+	lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 
+
+#| /root/toadwart/rlogr/rlogr -t -s netusim
 
 
     # lxc-execute -s lxc.console=none -n $LXC_NAME -- bash -c ". /root/.gummi; su -p user -c \"export XXX=10;$CMD\""

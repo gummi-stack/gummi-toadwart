@@ -73,28 +73,29 @@ app.get '/ps/start', (req, res) ->
 	lxc.setup (name)->
 		approot = "#{lxc.root}app"
 		fs.mkdirSync approot
-
-		file = req.params.slug
-		env = req.params.env
-		cmd = req.params.cmd
-
+		
+		file = req.query.slug
+		env = req.query.env
+		cmd = req.query.cmd
+		console.log "tar -C #{approot}/ -xzf #{file}"
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
+			lxc.exec '/buildpacks/startup /app run ' + cmd, (exitCode) ->
+					lxc.dispose () ->
 			res.json
 				pid: lxc.process.pid
 				name: lxc.name
-			lxc.exec '/buildpacks/startup /app run ' + cmd, (exitCode) ->
-				lxc.dispose () ->
-
+				a: stdout
+				b: stderr
 
 app.get '/ps/kill', (req, res) ->
-	process.kill(req.params.pid * -1)
-	lxc = new Lxc req.params.name
+	process.kill(req.query.pid * -1)
+	lxc = new Lxc req.query.name
 	lxc.dispose () ->
 		res.end 'je po nem Jime'
 
 
 app.get '/ps/status', (req, res) ->
-	exec "ps #{req.params.pid}", (error, stdout, stderr) ->
+	exec "ps #{req.query.pid}", (error, stdout, stderr) ->
 		res.end stdout
 
 
