@@ -12,6 +12,8 @@ dhcp =
 	get: ->
 		dhcp.ip[3]++
 		throw Error 'IP pool is empty' if dhcp.ip[3] > 99
+		util.log "assignuju #{dhcp.ip.join '.'}" 
+
 		ip: dhcp.ip.join '.'
 		mask: dhcp.mask
 		route: dhcp.route
@@ -75,7 +77,8 @@ app.post '/ps/start', (req, res) ->
 	lxc.on 'exit', (code) ->
 		util.print 'EXIT: ' + code
 
-	lxc.setup dhcp.get(), (name) ->
+	lease = dhcp.get()
+	lxc.setup lease, (name) ->
 		approot = "#{lxc.root}app"
 		fs.mkdirSync approot
 
@@ -93,7 +96,7 @@ app.post '/ps/start', (req, res) ->
 				lxc.dispose () ->
 			res.json
 				pid: lxc.process.pid
-				ip: dhcp.ip.join '.'
+				ip: lease.ip
 				name: lxc.name
 
 app.get '/ps/kill', (req, res) ->
@@ -176,5 +179,5 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 
 
 app.listen 81
-util.log 'Toadwart serving on w81'
+util.log 'Toadwart serving on 81'
 

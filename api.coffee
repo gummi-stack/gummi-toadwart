@@ -42,6 +42,7 @@ class Igthorn
 			res.on 'data', (chunk) ->
 				buffer += chunk
 			res.on 'end', () ->
+				util.log "----- " + buffer
 				done JSON.parse buffer
 				
 		req.write data
@@ -53,8 +54,11 @@ igthorn = new Igthorn
 
 # return
 class NginxConfig
+	writeConfig: (name, config) ->
+		fs.writeFileSync "/nginx/#{name}.conf", config
+	
 	reload: (done) ->
-		exec 'ssh -i /root/.ssh/id_rsa 10.1.69.100 -C /etc/init.d/nginx start', (err, stdout, stderr) ->
+		exec 'ssh -i /root/.ssh/id_rsa 10.1.69.100 -C /etc/init.d/nginx reload', (err, stdout, stderr) ->
 			done arguments
 
 
@@ -110,20 +114,47 @@ app.get '/apps/:app/:branch/ps/restart', (req, res) ->
 						worker: item.name
 						
 					igthorn.start opts, (r) ->
+						util.log util.inspect r
 						item.result = r
 						done()
 						
 				), (err) ->
 					build.out = processes 
-					res.json build
+
+					## TODO ocheckovat jestli vsechno bezi
+					## prepnout router
+					servers = "\n"
+					for state in processes
+						ip = state.result.ip
+						port = 5000
+						servers += "\tserver #{ip}:#{port};\n"
+					
+					upstream = "#{branch}.#{app}".replace /\./g, ''
+					cfg = """					
+						upstream #{upstream} {
+						   #{servers}
+						}
+
+						server {
+
+						  listen 80;
+						  server_name #{branch}.#{app}.nibbler.cz;
+						  location / {
+						    proxy_pass http://#{upstream};
+						  }
+						}
+					"""
+					nginx.writeConfig upstream, cfg
+					nginx.reload (o) ->
+						build.conf = cfg
+						build.nginx = o
+						res.json build
 					
 				# util.log util.inspect processes
 					
 				# igthorn.start ''
 				
 
-	## ocheckovat jestli vsechno bezi
-	## prepnout router
 	## soft kill starejch
 	## pockat jestli se neukonci
 	## kill -9 starejch
