@@ -5,18 +5,10 @@ fs = require 'fs'
 net = require 'net'
 procfile = require 'procfile'
 
-dhcp =
-	ip: [ 10, 1, 69, 49 ]
+dhcp = new require('./lib/dhcp.coffee')
+	addresses: '10.1.69.50-10.1.69.99'
 	mask: '255.255.255.0'
 	route: '10.1.69.254'
-	get: ->
-		dhcp.ip[3]++
-		throw Error 'IP pool is empty' if dhcp.ip[3] > 99
-		util.log "assignuju #{dhcp.ip.join '.'}" 
-
-		ip: dhcp.ip.join '.'
-		mask: dhcp.mask
-		route: dhcp.route
 
 redis = require('redis-url').connect()
 #mongodb = require 'mongodb'
@@ -65,7 +57,7 @@ app.post '/ps/start', (req, res) ->
 	env = req.body.env
 
 	return res.json error: 'Missing slug' unless file
-	
+
 	lxc = new Lxc
 
 	lxc.on 'data', (data) ->
@@ -88,7 +80,7 @@ app.post '/ps/start', (req, res) ->
 		console.log "tar -C #{approot}/ -xzf #{file}"
 		for key, val of env
 		    util.log key, val
-		    process.env[key] = val	
+		    process.env[key] = val
 
 		process.env.FFF='joooooo'
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
@@ -123,7 +115,7 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 	file = "/shared/git-archive/#{fileName}.tar.gz"
 	slug = "/shared/slugs/#{fileName}.tgz"
 	process.env.TERM = 'xterm'
-	
+
 	req.on 'end', () ->
 		lxc = new Lxc
 
