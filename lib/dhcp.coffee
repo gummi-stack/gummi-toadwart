@@ -56,8 +56,11 @@ class Dhcp
 		for ip of @_pool
 			if @_pool[ip] is null
 				@_lease ip
-				@config.ip = ip
-				return @config
+				return o =
+					ip: ip
+					mask: @config.mask
+					route: @config.route
+				
 		throw new Error 'IP pool is empty'
 
 
