@@ -1,7 +1,6 @@
 #!/bin/bash
 
 
-
 LXC_BASE="child"
 UNION="overlayfs"
 
@@ -186,7 +185,7 @@ run_container()
 ##	lxc-execute -s lxc.console=none -n child -- bash
 	
 	lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 
-
+	#echo "RURRU" $?
 #| /root/toadwart/rlogr/rlogr -t -s netusim
 
 
@@ -222,7 +221,7 @@ elif [ "$action" = "run" ]; then
 	run_container
 	#echo "Koncim"
 	#clean_container $LXC_NAME
-	exit 1
+	exit $?
 	
 elif [ "$action" = "clean" ]; then
 	clean_container $2

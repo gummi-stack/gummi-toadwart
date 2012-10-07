@@ -33,18 +33,9 @@ Lxc = require './lib/lxc'
 #	collection = new mongodb.Collection client, 'builds'
 
 
-# lxc.setup (name)->
-# 	util.log "lxc name #{name}" 
-# 	lxc.exec 'uptime -h', ->
-# 		util.log "command end" 
-# 
-# 		lxc.dispose ->
-# 			util.log "lxc name #{name} - disposed" 
-# 	
-
 
 app = express()
-#app.use express.bodyParser()
+app.use express.bodyParser()
 
 app.post '/', (req, res)->
 	buffer = ''
@@ -66,25 +57,31 @@ app.post '/', (req, res)->
 				res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
 
 
-app.get '/ps/start', (req, res) ->
+app.post '/ps/start', (req, res) ->
+	file = req.body.slug
+	cmd = req.body.cmd
+	env = req.body.env
+
+	return res.json error: 'Missing slug' unless file
+	
 	lxc = new Lxc
 
 	lxc.on 'data', (data) ->
-		util.log data
+		util.print "dada " + data
 
 	lxc.on 'error', (data) ->
-		util.log 'ERR: ' + data
+		util.print 'ERR: ' + data
 
 	lxc.on 'exit', (code) ->
-		util.log 'EXIT: ' + code
+		util.print 'EXIT: ' + code
 
 	lxc.setup dhcp.get(), (name) ->
 		approot = "#{lxc.root}app"
 		fs.mkdirSync approot
 
-		file = req.query.slug
-		env = JSON.parse req.query.env
-		cmd = req.query.cmd
+		# file = req.query.slug
+		# env = JSON.parse req.query.env
+		# cmd = req.query.cmd
 		console.log "tar -C #{approot}/ -xzf #{file}"
 		for key, val of env
 		    util.log key, val
@@ -111,7 +108,7 @@ app.get '/ps/status', (req, res) ->
 		res.end stdout
 
 app.get '/ps/statusall', (req, res) ->
-	exec "ps | grep lxc", (error, stdout, stderr) ->
+	exec "ps afx", (error, stdout, stderr) ->
 		res.end stdout
 
 
@@ -122,7 +119,8 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 	fileName = "#{p.repo}-#{p.branch}-#{p.rev}"
 	file = "/shared/git-archive/#{fileName}.tar.gz"
 	slug = "/shared/slugs/#{fileName}.tgz"
-
+	process.env.TERM = 'xterm'
+	
 	req.on 'end', () ->
 		lxc = new Lxc
 
@@ -135,14 +133,14 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 
 		lxc.setup dhcp.get(), (name)->
 			util.log "lxc name #{name}"
-			res.write "lxc name #{name}\n"
+			#res.write "lxc name #{name}\n"
 
 			util.log
 			approot = "#{lxc.root}app"
 			fs.mkdirSync approot
 
 			util.log "tar -C #{approot} -xvzf #{file}"
-
+			#res.write util.inspect process.env
 			exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
 				files = fs.readdirSync approot
 				util.log util.inspect files
@@ -177,6 +175,6 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 				res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
 
 
-app.listen 80
-util.log 'server listening on 80'
+app.listen 81
+util.log 'Toadwart serving on w81'
 
