@@ -34,6 +34,7 @@ class Dhcp
 		@_leased = {}
 
 		@_pool[ip] = null
+		@_lease ip if backup.indexOf(ip) > -1
 
 		while ip isnt max
 			pos = 3
@@ -56,10 +57,9 @@ class Dhcp
 		for ip of @_pool
 			if @_pool[ip] is null
 				@_lease ip
-				return o =
-					ip: ip
-					mask: @config.mask
-					route: @config.route
+				res = ip: ip
+				res[key] = @config[key] for key of @config
+				return res
 				
 		throw new Error 'IP pool is empty'
 
@@ -76,10 +76,10 @@ class Dhcp
 	_lease: (ip) =>
 		@_pool[ip] = new Date
 		@_leased[ip] = setInterval ( () =>
-			exec "ping -c 1 -w 1 #{ip}", (error, stdout, stderr) =>
+			exec "ping -c 1 -w 5 #{ip}", (error, stdout, stderr) =>
 				# pokud zarizeni neodpovida, skonci to chybou
 				@_cancel ip if error
-		), 2000
+		), 1000 * 60
 		@_backup()
 
 
