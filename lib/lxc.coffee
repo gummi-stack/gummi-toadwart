@@ -20,8 +20,8 @@ class Lxc extends EventEmitter
 			cb @name
 			
 
-	exec: (command, cb) =>
-		p = spawn 'setsid', [manager, 'run', @name, '--', command]
+	exec: (command, env, cb) =>
+		p = spawn 'setsid', [manager, 'run', @name, '--', command], {env: env}
 #		logr = spawn '/root/rlogr/rlogr', ['-t', '-s test2']
 		
 #		p.stdout.pipe logr.stdin, {end: yes}
@@ -42,8 +42,8 @@ class Lxc extends EventEmitter
 		@process = p
 
 
-	rendezvous: (command, cb) =>
-		child = fork __dirname + '/lxcserver', [command, @name]
+	rendezvous: (command, env,cb) =>
+		child = fork __dirname + '/lxcserver', [command, @name], {env: env}
 		child.on 'message', cb
 
 	dispose: (cb) =>

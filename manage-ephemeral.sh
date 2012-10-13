@@ -3,6 +3,8 @@
 
 LXC_BASE="child"
 UNION="overlayfs"
+RLOGR=/root/toadwart/rlogr/rlogr
+
 
 action=$1
 
@@ -11,7 +13,8 @@ on_die()
 {
     # print message
     #
-    echo "Dying..."
+    # echo "Dying..."
+	echo "Stopped container for $LOG_APP" | $RLOGR  -s $LOG_CHANNEL -a dyno
 
     # Need to exit the script explicitly when done.
     # Otherwise the script would live on, until system
@@ -20,7 +23,7 @@ on_die()
     exit 0
 }
 
-#trap 'on_die' TERM
+trap 'on_die' TERM
 
 setup_variables()
 {
@@ -158,7 +161,8 @@ do_mount() {
 
 clean_container()
 {
-echo "Stopping lxc" 
+	
+	echo "Stopping lxc" 
 # >&2
 	LXC_NAME=$1
 	setup_variables
@@ -183,8 +187,14 @@ run_container()
 #    lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root; su user -c \". /init/user; ps afx\""
 	
 ##	lxc-execute -s lxc.console=none -n child -- bash
+
 	
-	lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 
+	echo "Starting container for $LOG_APP $LOG_CMD" | $RLOGR  -s $LOG_CHANNEL -a dyno
+	
+	lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD "  | $RLOGR -t -s $LOG_CHANNEL -a $LOG_APP
+	
+	echo "Stopped container for $LOG_APP" | $RLOGR  -s $LOG_CHANNEL -a dyno
+	
 	#echo "RURRU" $?
 #| /root/toadwart/rlogr/rlogr -t -s netusim
 

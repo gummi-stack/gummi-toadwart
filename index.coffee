@@ -45,10 +45,16 @@ app.post '/', (req, res)->
 		return unless command
 		util.log 'Starting rendezvous: ' + command
 
+
+		env = {}
+		env.LOG_CHANNEL = 'kanalek'
+		env.LOG_APP = 'appka'
+		
+		
 		###### TODO rozbalit appku
 		lxc.setup dhcp.get(), (name) ->
 			util.log "lxc name #{name}"
-			lxc.rendezvous command, (port) ->
+			lxc.rendezvous command, env, (port) ->
 				console.log "::#{port}"
 				res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
 
@@ -57,6 +63,8 @@ app.post '/ps/start', (req, res) ->
 	file = req.body.slug
 	cmd = req.body.cmd
 	env = req.body.env
+	logApp = req.body.logApp
+	logName = req.body.logName
 
 	return res.json error: 'Missing slug' unless file
 
@@ -80,25 +88,33 @@ app.post '/ps/start', (req, res) ->
 		# env = JSON.parse req.query.env
 		# cmd = req.query.cmd
 		console.log "tar -C #{approot}/ -xzf #{file}"
-		for key, val of env
-		    util.log key, val
-		    process.env[key] = val
-
-		process.env.FFF='joooooo'
+		# for key, val of env
+		# 		    util.log key, val
+		# 		    process.env[key] = val
+		
+		env.LOG_CHANNEL = logName
+		env.LOG_APP = logApp
+		env.LOG_CMD = cmd
+		
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
-			lxc.exec '/buildpacks/startup /app run ' + cmd, (exitCode) ->
+			lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
 				lxc.dispose () ->
 			res.json
 				pid: lxc.process.pid
 				ip: lease.ip
 				name: lxc.name
 
-app.get '/ps/kill', (req, res) ->
-	process.kill(req.query.pid * -1)
-	lxc = new Lxc req.query.name
+app.post '/ps/kill', (req, res) ->
+	try 
+		process.kill(req.body.pid * -1)
+	catch err
+		util.log "#{req.body.name} #{req.body.pid} uz byl asi mrtvej" 
+		
+	lxc = new Lxc req.body.name
 	lxc.dispose () ->
-		res.end 'je po nem Jime'
-
+		res.json 
+			status: 'ok'
+			message: 'Process successfully killed'
 
 app.get '/ps/status', (req, res) ->
 	exec "ps #{req.query.pid}", (error, stdout, stderr) ->
@@ -159,7 +175,11 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 					slug: slug
 					procfile: procData
 
-				lxc.exec '/buildpacks/startup /app', (exitCode) ->
+				env = {}
+				env.LOG_CHANNEL = 'TODOkanalek'
+				env.LOG_APP = 'TODOappka'
+					
+				lxc.exec '/buildpacks/startup /app', env, (exitCode) ->
 					exec "tar -Pczf #{slug} -C #{approot} .", (error, stdout, stderr) ->
 						mongoFactory.db mongoUrl, (err, db) ->
 							db.collection 'builds', (err, collection) ->

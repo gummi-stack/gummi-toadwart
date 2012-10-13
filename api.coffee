@@ -10,9 +10,20 @@ redis = require('redis-url').connect()
 mongoFactory = require 'mongo-connection-factory'
 
 mongoUrl = "mongodb://10.1.69.105/gummi"
-
+ObjectID = require('mongodb').ObjectID
 
 async = require 'async'
+colors = require 'colors'
+
+###
+
+TODO
+
+do nastartovanych aplikaci pridat info na kterem nodu bezi
+
+
+
+###
 
 class Igthorn
 	start: (data, done) ->
@@ -22,7 +33,11 @@ class Igthorn
 		@request '10.1.69.105', 81, '/ps/start', data, (res) ->
 			done res
 			
-			
+	
+	softKill: (data, done) ->
+		@request '10.1.69.105', 81, '/ps/kill', data, (res) ->
+			done res
+		
 		
 	request: (ip, port, url, data, done) ->
 		data = JSON.stringify data
@@ -78,8 +93,120 @@ app.get '/reloadrouter', (req, res) ->
 	nginx.reload (o) ->
 		res.json o
 
+
+app.get '/apps/:app/:branch/logs', (req, res) ->
+	app = req.params.app
+	app = app + '.git' unless app.match /\.git/
+	branch = req.params.branch 
+	tail = req.query.tail
+	start = new Date().getTime() * 1000;
+	util.log util.inspect tail
+
+
+	processResponse = (response) ->
+		#todo colorizovat podle 
+		for time,i in response by 2
+			data = response[i+1]
+			date = new Date(time/1000)
+			line = date.toJSON().replace(/T/, ' ').replace(/Z/, ' ').cyan
+			matches = data.match /([^\s]*)\s- -(.*)/
+			worker = matches[1]
+			if worker is 'dyno'
+				worker = worker.magenta
+			else
+				worker = worker.yellow
+			
+			line += "[#{worker}] #{matches[2]}\n"
+			res.write line
+			# process.stdout.write line
+
+	
+	closed = no
+	res.on 'close', ->
+		closed = yes
+
+	getNext = () ->
+		return if closed 
+		
+		# nacteni novych od posledniho dotazu
+		opts = ["#{app}/#{branch}", '+inf', start, 'WITHSCORES']
+		start = new Date().getTime() * 1000;
+
+		redis.zrevrangebyscore opts, (err, response) ->
+			# util.log 'dalsi ' + start
+			# util.log util.inspect res.complete
+			
+			processResponse response.reverse()
+			setTimeout (() -> getNext()), 1000 
+		
+
+
+	opts = ["#{app}/#{branch}", start, '-inf', 'WITHSCORES', 'LIMIT', '0', '10']
+	# nacteni odted do historie
+	redis.zrevrangebyscore opts, (err, response) ->
+		processResponse response.reverse()
+		if tail
+			getNext()
+		else 
+			res.end()
+			
+		# TODO zavre se pri ukonceni requestu ?
+app.get '/apps/:app/:branch/ps', (req, res) ->
+	app = req.params.app
+	app = app + '.git' unless app.match /\.git/
+	branch = req.params.branch 
+	mongoFactory.db mongoUrl, (err, db) ->
+	
+		db.collection 'instances', (err, instances) ->
+			q = 
+				app: app
+				branch: branch
+			instances.find(q).toArray (err, results) ->
+				res.json results
+	
+	
+
+
+app.get '/apps/:app/:branch/ps/stop', (req, res) ->
+	app = req.params.app
+	app = app + '.git' unless app.match /\.git/
+	branch = req.params.branch 
+
+	mongoFactory.db mongoUrl, (err, db) ->
+	
+		db.collection 'instances', (err, instances) ->
+			q = 
+				app: app
+				branch: branch
+			util.log 'xxx'
+			instances.find(q).toArray (err, results) ->
+				res.json 
+					status: 'ok'
+					message: 'Asi sem je zabil, ale nekontroloval jsem to'
+
+
+				for result in results
+					o = 	
+						name: result.dynoData.name
+						pid: result.dynoData.pid
+					do(result) ->
+						igthorn.softKill o, (res) ->
+							
+							if res.status is 'ok'
+								console.log 'mazu'
+								q = _id: result._id
+								util.log util.inspect q
+								instances.remove q, () ->
+									util.log util.inspect arguments
+							util.log util.inspect res
+
+	
+	
+
+
 app.get '/apps/:app/:branch/ps/restart', (req, res) ->
 	app = req.params.app
+	app = app + '.git' unless app.match /\.git/
 	branch = req.params.branch 
 	
 	## najit zaznam v mongu
@@ -89,7 +216,8 @@ app.get '/apps/:app/:branch/ps/restart', (req, res) ->
 			q = 
 				app: app
 				branch: branch
-				
+			util.log q
+			
 			collection.find(q).sort(timestamp: -1).limit(1).toArray (err, results) ->
 				[build] = results
 				
@@ -112,15 +240,33 @@ app.get '/apps/:app/:branch/ps/restart', (req, res) ->
 						cmd: item.cmd
 						name: "#{app}/#{branch}"
 						worker: item.name
+						logName: "#{app}/#{branch}"
+						logApp: item.name
 						
 					igthorn.start opts, (r) ->
+						
 						util.log util.inspect r
 						item.result = r
 						done()
+						util.log util.inspect build
+						
+						db.collection 'instances', (err, instances) ->
+							o = 
+								dynoData: r
+								buildId: build._id
+								app: app
+								branch: branch
+								opts: opts 
+								time: new Date
+								
+							instances.insert o
+							
+						
+						
 						
 				), (err) ->
 					build.out = processes 
-
+					console.log "#{app} started"
 					## TODO ocheckovat jestli vsechno bezi
 					## prepnout router
 					servers = "\n"
@@ -150,14 +296,18 @@ app.get '/apps/:app/:branch/ps/restart', (req, res) ->
 						build.nginx = o
 						res.json build
 					
+						
+					## soft kill starejch
+					## pockat jestli se neukonci
+					## kill -9 starejch
+					
+					
+					
 				# util.log util.inspect processes
 					
 				# igthorn.start ''
 				
 
-	## soft kill starejch
-	## pockat jestli se neukonci
-	## kill -9 starejch
 	
 	# res.json
 	# 	app: req.params.app
