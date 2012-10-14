@@ -190,6 +190,7 @@ app.get '/apps/:app/:branch/ps/stop', (req, res) ->
 						name: result.dynoData.name
 						pid: result.dynoData.pid
 					do(result) ->
+						util.log util.inspect result
 						igthorn.softKill o, (res) ->
 							
 							if res.status is 'ok'
@@ -219,6 +220,61 @@ saveInstance = (instance, done) ->
 			collection.insert instance, done
 
 
+startProcesses = (build, processes, rendezvous, done) ->
+	util.log util.inspect build
+	async.forEach processes, ((item, done) ->
+		opts = 
+			slug: build.slug
+			cmd: item.cmd
+			name: "#{build.app}/#{build.branch}"
+			worker: item.name
+			logName: "#{build.app}/#{build.branch}"
+			logApp: item.name
+			rendezvous: rendezvous
+			
+		igthorn.start opts, (r) ->
+						
+			util.log util.inspect r
+			item.result = r
+			done()
+			util.log util.inspect build
+						
+			o = 
+				dynoData: r
+				buildId: build._id
+				app: build.app
+				branch: build.branch
+				opts: opts 
+				time: new Date
+			saveInstance o
+
+	), (err) ->
+		done()
+
+app.post '/apps/:app/:branch/ps', (req, res) ->
+	buffer = ''
+	req.on 'data', (data) ->
+		buffer += data
+	req.on 'end', () ->
+		req.body = JSON.parse buffer
+	
+		app = req.params.app
+		app = app + '.git' unless app.match /\.git/
+		branch = req.params.branch 
+	
+		cmd = req.body.command
+
+		findLatestBuild app, branch, (build) ->
+		
+			process = {name: "run-X", type: "run" , cmd: cmd}
+			startProcesses build, [process], yes, () ->
+				console.log '--d-d-d-d-d-d-d-d-d-d-d-d-d-d-dd--d'
+				util.log util.inspect process
+				res.json rendezvousURI: process.result.rendezvousURI
+
+			
+	
+
 app.get '/apps/:app/:branch/ps/restart', (req, res) ->
 	app = req.params.app
 	app = app + '.git' unless app.match /\.git/
@@ -238,32 +294,7 @@ app.get '/apps/:app/:branch/ps/restart', (req, res) ->
 			for i in [1..2]
 				processes.push {name: "#{proc}-#{i}", type: proc , cmd: cmd}
 
-		async.forEach processes, ((item, done)->
-			opts = 
-				slug: build.slug
-				cmd: item.cmd
-				name: "#{app}/#{branch}"
-				worker: item.name
-				logName: "#{app}/#{branch}"
-				logApp: item.name
-						
-			igthorn.start opts, (r) ->
-						
-				util.log util.inspect r
-				item.result = r
-				done()
-				util.log util.inspect build
-						
-				o = 
-					dynoData: r
-					buildId: build._id
-					app: app
-					branch: branch
-					opts: opts 
-					time: new Date
-				saveInstance o
-
-		), (err) ->
+		startProcesses build, processes, no, () ->
 			build.out = processes 
 			console.log "#{app} started"
 			## TODO ocheckovat jestli vsechno bezi

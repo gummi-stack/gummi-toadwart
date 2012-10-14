@@ -43,8 +43,10 @@ class Lxc extends EventEmitter
 
 
 	rendezvous: (command, env,cb) =>
+		env.LXC_RENDEZVOUS = 1
 		child = fork __dirname + '/lxcserver', [command, @name], {env: env}
 		child.on 'message', cb
+		@process = child
 
 	dispose: (cb) =>
 		exec "#{manager} clean #{@name}", (err, stdout, stderr) =>

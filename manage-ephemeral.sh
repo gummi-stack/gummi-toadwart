@@ -1,19 +1,13 @@
 #!/bin/bash
 
-
 LXC_BASE="child"
 UNION="overlayfs"
 RLOGR=/root/toadwart/rlogr/rlogr
 
 
-action=$1
-
 
 on_die()
 {
-    # print message
-    #
-    # echo "Dying..."
 	echo "Stopped container for $LOG_APP" | $RLOGR  -s $LOG_CHANNEL -a dyno
 
     # Need to exit the script explicitly when done.
@@ -45,7 +39,6 @@ setup_container()
 	
 	
 	mkdir $OVERLAY_DIR
-	#OVERLAY_DIR=`mktemp -d /tmp/lxc-lp-XXXXXXX`
 	
 	sudo mount -t tmpfs none $OVERLAY_DIR
 	do_mount "/var/lib/lxc/$LXC_BASE" "${OVERLAY_DIR}" $LXC_DIR
@@ -62,6 +55,7 @@ setup_container()
 	
 	echo $LXC_NAME
 }
+
 update_config() {
 
     c=$LXC_DIR/config
@@ -84,70 +78,6 @@ update_config() {
     echo LXC_ROUTE=$LXC_ROUTE >> $cfg
 }
 
-start_container()
-{
-    action=$1
-    slug=$2
-    src=$3
-    worker=$3
-
-   echo "Starting up the container..."
-
- #  ls -ls $LXC_DIR/rootfs/dev/
-
-   rm $LXC_DIR/rootfs/dev/shm
-   mkdir $LXC_DIR/rootfs/dev/shm
-
-
-#   echo "route add default gw 172.16.226.2 " >> $LXC_DIR/rootfs/etc/rc.local
-
-#echo
-#mount
-#echo
-
-   APP_DIR=$LXC_DIR/rootfs/app
-    mkdir -p $APP_DIR
-#   echo "Copying application source"
-#   cp -r /home/bender/testing/ $APP_DIR
-#    CMD="/init $action $slug $worker"
-#   sudo lxc-execute -n $LXC_NAME -- $CMD
-
-    SLUG_NAME=$slug
-    SLUG_FILE=/slugs/$SLUG_NAME.tar.gz
-
-
-    if [ $action = "run" ]; then
-	#TODO propasovat enviroment ? 
-       tar -C $APP_DIR -xzf $SLUG_FILE
-       CMD="/init $action $worker"
-	   echo "SDSDSDSDSDSDSD"
-       lxc-execute -n $LXC_NAME -- $CMD | rlogr -s lxc-exec -t
-
-
-    fi
-
-    if [ $action = "compile" ]; then
-       echo "Copying application source"
-	if [ ! -d $src ]; then
-	   echo ">>>>>> Missing src dir"
-	    exit 1
-	fi
-       #cp -r /home/bender/testing/* $APP_DIR
-	#echo ">>>>>>>>>>$src"
-
-	#exit 1
-       cp -r $src/* $APP_DIR
-       CMD="/init $action"
-       lxc-execute -n $LXC_NAME -- $CMD | /root/toadwart/rlogr/rlogr -t -s nevim
-
-        SLUG_NAME=$slug
-	make_slug
-    fi
-
-
-
-}
-
 do_mount() {
    lower=$1
    upper=$2
@@ -163,11 +93,9 @@ clean_container()
 {
 	
 	echo "Stopping lxc" 
-# >&2
 	LXC_NAME=$1
 	setup_variables
-	
-	#exit 1
+
 	sudo umount $EPHEMERAL_BIND_DIR
 	sudo umount $LXC_DIR
 	sudo umount $OVERLAY_DIR
@@ -178,59 +106,41 @@ clean_container()
 
 run_container()
 {
-	#CMD=$1
-	
-	#lxc-execute -n $LXC_NAME -- bash --verbose --init-file /root/.gummi -c $CMD # | rlogr -s lxc-exec -t
-	# echo ---- $CMD
-    # lxc-execute -n $LXC_NAME -- bash -c ". /root/.gummi; su -p user -c $CMD"
-
-#    lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root; su user -c \". /init/user; ps afx\""
-	
-##	lxc-execute -s lxc.console=none -n child -- bash
-
-	
 	echo "Starting container for $LOG_APP $LOG_CMD" | $RLOGR  -s $LOG_CHANNEL -a dyno
 	
-	lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD "  | $RLOGR -t -s $LOG_CHANNEL -a $LOG_APP
 	
+	# TODO presmerovavat  2>&1 kdyz neni rendezvous
+	
+	
+	if [ "$LXC_RENDEZVOUS" = 1 ]; then
+		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " # | $RLOGR -t -s $LOG_CHANNEL -a 
+	else
+		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 2>&1 | $RLOGR -t -s $LOG_CHANNEL -a $LOG_APP		
+	fi
 	echo "Stopped container for $LOG_APP" | $RLOGR  -s $LOG_CHANNEL -a dyno
 	
-	#echo "RURRU" $?
-#| /root/toadwart/rlogr/rlogr -t -s netusim
-
-
-    # lxc-execute -s lxc.console=none -n $LXC_NAME -- bash -c ". /root/.gummi; su -p user -c \"export XXX=10;$CMD\""
-
-#    lxc-execute -n $LXC_NAME -- bash -c ". /root/.gummi; su -p user -c \"export XXX=10;$CMD\""
-
-
-
-    # lxc-execute -n $LXC_NAME -- bash /root/.gummi
-    # lxc-execute -n $LXC_NAME -- bash -c $CMD
-
 }
 
+
+action=$1
 
 if [ "$action" = "setup" ]; then
 	setup_container
 elif [ "$action" = "run" ]; then
-	# echo "Poustim"
-	# echo $@
-	
+
 	LXC_NAME=$2
 	CMD=$3
 	shift
 	shift
 	shift
 	CMD=$@
+
 	if [ "$CMD" = "" ]; then
 		echo "Missing command!"
 		clean_container $LXC_NAME
 		exit 1
 	fi
 	run_container
-	#echo "Koncim"
-	#clean_container $LXC_NAME
 	exit $?
 	
 elif [ "$action" = "clean" ]; then

@@ -8,7 +8,8 @@ manager = __dirname + "/../manage-ephemeral.sh"
 server = net.createServer (socket) =>
 	pty = require 'pty.js'
 	
-	xmanager = __dirname + "/../start-ephemeral"
+	console.log '4343434343434343434343434'
+	util.log util.inspect process.env
 	
 	# term = pty.spawn 'bash', [], {
 	# term = pty.spawn manager, ['run', @name, '--', command], {

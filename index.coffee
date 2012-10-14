@@ -33,36 +33,37 @@ Lxc = require './lib/lxc'
 app = express()
 app.use express.bodyParser()
 
-app.post '/', (req, res)->
-	buffer = ''
-	req.on 'data', (data) ->
-		buffer += data
-	req.on 'end', () ->
-		lxc = new Lxc
-
-		data = JSON.parse buffer
-		command = data.command
-		return unless command
-		util.log 'Starting rendezvous: ' + command
-
-
-		env = {}
-		env.LOG_CHANNEL = 'kanalek'
-		env.LOG_APP = 'appka'
-		
-		
-		###### TODO rozbalit appku
-		lxc.setup dhcp.get(), (name) ->
-			util.log "lxc name #{name}"
-			lxc.rendezvous command, env, (port) ->
-				console.log "::#{port}"
-				res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
-
+# app.post '/', (req, res)->
+# 	buffer = ''
+# 	req.on 'data', (data) ->
+# 		buffer += data
+# 	req.on 'end', () ->
+# 		lxc = new Lxc
+# 
+# 		data = JSON.parse buffer
+# 		command = data.command
+# 		return unless command
+# 		util.log 'Starting rendezvous: ' + command
+# 
+# 
+# 		env = {}
+# 		env.LOG_CHANNEL = 'kanalek'
+# 		env.LOG_APP = 'appka'
+# 		
+# 		
+# 		###### TODO rozbalit appku
+# 		lxc.setup dhcp.get(), (name) ->
+# 			util.log "lxc name #{name}"
+# 			lxc.rendezvous command, env, (port) ->
+# 				console.log "::#{port}"
+# 				res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
+# 
 
 app.post '/ps/start', (req, res) ->
 	file = req.body.slug
 	cmd = req.body.cmd
 	env = req.body.env
+	rendezvous = req.body.rendezvous
 	logApp = req.body.logApp
 	logName = req.body.logName
 
@@ -97,14 +98,26 @@ app.post '/ps/start', (req, res) ->
 		env.LOG_CMD = cmd
 		
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
-			lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
-				lxc.dispose () ->
-			res.json
-				pid: lxc.process.pid
-				ip: lease.ip
-				name: lxc.name
+			if rendezvous
+				lxc.rendezvous '/buildpacks/startup /app run ' + cmd, env, (port) ->
+					console.log "::#{port}"
+					res.json 
+						rendezvousURI: "tcp://10.1.69.105:#{port}"
+						pid: lxc.process.pid
+						ip: lease.ip
+						name: lxc.name
+						
+			else
+				lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
+					lxc.dispose () ->
+				res.json
+					pid: lxc.process.pid
+					ip: lease.ip
+					name: lxc.name
 
 app.post '/ps/kill', (req, res) ->
+	util.log util.inspect req.body
+
 	try 
 		process.kill(req.body.pid * -1)
 	catch err
@@ -146,15 +159,16 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 
 		lxc.setup dhcp.get(), (name)->
 			util.log "lxc name #{name}"
-			#res.write "lxc name #{name}\n"
+			res.write "lxc name #{name}\n"
 
 			util.log
 			approot = "#{lxc.root}app"
 			fs.mkdirSync approot
 
 			util.log "tar -C #{approot} -xvzf #{file}"
-			#res.write util.inspect process.env
+			res.write "rozbaluju \n"			
 			exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
+				res.write "rozbaleno 	\n"			
 				files = fs.readdirSync approot
 				util.log util.inspect files
 
@@ -178,7 +192,7 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 				env = {}
 				env.LOG_CHANNEL = 'TODOkanalek'
 				env.LOG_APP = 'TODOappka'
-					
+				res.write "excuju  \n"
 				lxc.exec '/buildpacks/startup /app', env, (exitCode) ->
 					exec "tar -Pczf #{slug} -C #{approot} .", (error, stdout, stderr) ->
 						mongoFactory.db mongoUrl, (err, db) ->
