@@ -104,7 +104,7 @@ app.get '/apps/:app/:branch/logs', (req, res) ->
 
 
 	processResponse = (response) ->
-		#todo colorizovat podle 
+		#todo colorizovat podle workeru ?
 		for time,i in response by 2
 			data = response[i+1]
 			date = new Date(time/1000)
@@ -150,7 +150,7 @@ app.get '/apps/:app/:branch/logs', (req, res) ->
 		else 
 			res.end()
 			
-		# TODO zavre se pri ukonceni requestu ?
+
 app.get '/apps/:app/:branch/ps', (req, res) ->
 	app = req.params.app
 	app = app + '.git' unless app.match /\.git/
@@ -203,114 +203,103 @@ app.get '/apps/:app/:branch/ps/stop', (req, res) ->
 	
 	
 
+findLatestBuild = (app, branch, done) ->
+	mongoFactory.db mongoUrl, (err, db) ->
+		db.collection 'builds', (err, collection) ->
+			q = 
+				app: app
+				branch: branch
+			collection.find(q).sort(timestamp: -1).limit(1).toArray (err, results) ->
+				[build] = results
+				done build
+					
+saveInstance = (instance, done) ->
+	mongoFactory.db mongoUrl, (err, db) ->
+		db.collection 'instances', (err, collection) ->
+			collection.insert instance, done
+
 
 app.get '/apps/:app/:branch/ps/restart', (req, res) ->
 	app = req.params.app
 	app = app + '.git' unless app.match /\.git/
 	branch = req.params.branch 
 	
-	## najit zaznam v mongu
-	mongoFactory.db mongoUrl, (err, db) ->
-
-		db.collection 'builds', (err, collection) ->
-			q = 
-				app: app
-				branch: branch
-			util.log q
-			
-			collection.find(q).sort(timestamp: -1).limit(1).toArray (err, results) ->
-				[build] = results
 				
+	findLatestBuild app, branch, (build) ->
+		processes = []
+		results = []
+		## nastartovat nove procesy podle skalovaci tabulky a procfile
 				
-				processes = []
-				results = []
-				## nastartovat nove procesy podle skalovaci tabulky a procfile
-				
-				for proc, data of build.procfile
-					cmd = data.command
-					cmd += " " + data.options.join ' ' if data.options
-					## todo brat v potaz skalovani a pridelovani spravneho cisla
-					## TODO pouze test
-					for i in [1..2]
-						processes.push {name: "#{proc}-#{i}", type: proc , cmd: cmd}
+		for proc, data of build.procfile
+			cmd = data.command
+			cmd += " " + data.options.join ' ' if data.options
+			## todo brat v potaz skalovani a pridelovani spravneho cisla
+			## TODO pouze test
+			for i in [1..2]
+				processes.push {name: "#{proc}-#{i}", type: proc , cmd: cmd}
 
-				async.forEach processes, ((item, done)->
-					opts = 
-						slug: build.slug
-						cmd: item.cmd
-						name: "#{app}/#{branch}"
-						worker: item.name
-						logName: "#{app}/#{branch}"
-						logApp: item.name
+		async.forEach processes, ((item, done)->
+			opts = 
+				slug: build.slug
+				cmd: item.cmd
+				name: "#{app}/#{branch}"
+				worker: item.name
+				logName: "#{app}/#{branch}"
+				logApp: item.name
 						
-					igthorn.start opts, (r) ->
+			igthorn.start opts, (r) ->
 						
-						util.log util.inspect r
-						item.result = r
-						done()
-						util.log util.inspect build
+				util.log util.inspect r
+				item.result = r
+				done()
+				util.log util.inspect build
 						
-						db.collection 'instances', (err, instances) ->
-							o = 
-								dynoData: r
-								buildId: build._id
-								app: app
-								branch: branch
-								opts: opts 
-								time: new Date
-								
-							instances.insert o
-							
-						
-						
-						
-				), (err) ->
-					build.out = processes 
-					console.log "#{app} started"
-					## TODO ocheckovat jestli vsechno bezi
-					## prepnout router
-					servers = "\n"
-					for state in processes
-						ip = state.result.ip
-						port = 5000
-						servers += "\tserver #{ip}:#{port};\n"
-					
-					upstream = "#{branch}.#{app}".replace /\./g, ''
-					cfg = """					
-						upstream #{upstream} {
-						   #{servers}
-						}
+				o = 
+					dynoData: r
+					buildId: build._id
+					app: app
+					branch: branch
+					opts: opts 
+					time: new Date
+				saveInstance o
 
-						server {
+		), (err) ->
+			build.out = processes 
+			console.log "#{app} started"
+			## TODO ocheckovat jestli vsechno bezi
+			## prepnout router
+			servers = "\n"
+			for state in processes
+				ip = state.result.ip
+				port = 5000
+				servers += "\tserver #{ip}:#{port};\n"
+					
+			upstream = "#{branch}.#{app}".replace /\./g, ''
+			cfg = """					
+				upstream #{upstream} {
+				   #{servers}
+				}
 
-						  listen 80;
-						  server_name #{branch}.#{app}.nibbler.cz;
-						  location / {
-						    proxy_pass http://#{upstream};
-						  }
-						}
-					"""
-					nginx.writeConfig upstream, cfg
-					nginx.reload (o) ->
-						build.conf = cfg
-						build.nginx = o
-						res.json build
+				server {
+
+				  listen 80;
+				  server_name #{branch}.#{app}.nibbler.cz;
+				  location / {
+				    proxy_pass http://#{upstream};
+				  }
+				}
+			"""
+			nginx.writeConfig upstream, cfg
+			nginx.reload (o) ->
+				build.conf = cfg
+				build.nginx = o
+				res.json build
 					
 						
-					## soft kill starejch
-					## pockat jestli se neukonci
-					## kill -9 starejch
+			## soft kill starejch
+			## pockat jestli se neukonci
+			## kill -9 starejch
 					
-					
-					
-				# util.log util.inspect processes
-					
-				# igthorn.start ''
-				
-
-	
-	# res.json
-	# 	app: req.params.app
 
 
 app.get '/ps/start', (req, res) ->
@@ -334,7 +323,7 @@ app.get '/ps/start', (req, res) ->
 		cmd = req.query.cmd
 		console.log "tar -C #{approot}/ -xzf #{file}"
 		for key, val of env
-		    util.log key, val
+		    util.log key, val	
 		    process.env[key] = val	
 
 		process.env.FFF='joooooo'
@@ -345,85 +334,6 @@ app.get '/ps/start', (req, res) ->
 				pid: lxc.process.pid
 				ip: dhcp.ip.join '.'
 				name: lxc.name
-# 
-# app.get '/ps/kill', (req, res) ->
-# 	process.kill(req.query.pid * -1)
-# 	lxc = new Lxc req.query.name
-# 	lxc.dispose () ->
-# 		res.end 'je po nem Jime'
-# 
-# 
-# app.get '/ps/status', (req, res) ->
-# 	exec "ps #{req.query.pid}", (error, stdout, stderr) ->
-# 		res.end stdout
-# 
-# app.get '/ps/statusall', (req, res) ->
-# 	exec "ps afx", (error, stdout, stderr) ->
-# 		res.end stdout
-# 
-# 
-# 
-# 
-# app.get '/git/:repo/:branch/:rev', (req, res) ->
-# 	p = req.params
-# 	fileName = "#{p.repo}-#{p.branch}-#{p.rev}"
-# 	file = "/shared/git-archive/#{fileName}.tar.gz"
-# 	slug = "/shared/slugs/#{fileName}.tgz"
-# 	process.env.TERM = 'xterm'
-# 	
-# 	req.on 'end', () ->
-# 		lxc = new Lxc
-# 
-# 		lxc.on 'data', (data) ->
-# 			res.write data
-# 
-# 		lxc.on 'error', (data) ->
-# 			res.write data
-# 
-# 
-# 		lxc.setup dhcp.get(), (name)->
-# 			util.log "lxc name #{name}"
-# 			#res.write "lxc name #{name}\n"
-# 
-# 			util.log
-# 			approot = "#{lxc.root}app"
-# 			fs.mkdirSync approot
-# 
-# 			util.log "tar -C #{approot} -xvzf #{file}"
-# 			#res.write util.inspect process.env
-# 			exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
-# 				files = fs.readdirSync approot
-# 				util.log util.inspect files
-# 
-# 				try
-# 					procData = fs.readFileSync("#{approot}/Procfile").toString()
-# 					procData = procfile.parse procData
-# 
-# 				catch e
-# 					res.write "ERR: Missing procfile\n"
-# 					return exit 1
-# 
-# 
-# 				buildData =
-# 					app: p.repo
-# 					branch: p.branch
-# 					rev: p.rev
-# 					timestamp: new Date
-# 					slug: slug
-# 					procfile: procData
-# 
-# 				lxc.exec '/buildpacks/startup /app', (exitCode) ->
-# 					exec "tar -Pczf #{slug} -C #{approot} .", (error, stdout, stderr) ->
-# 						mongoFactory.db mongoUrl, (err, db) ->
-# 							db.collection 'builds', (err, collection) ->
-# 								collection.insert buildData
-# 
-# 						exit exitCode
-# 
-# 		exit = (exitCode) ->
-# 			lxc.dispose ->
-# 				res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
-# 
 
 app.listen 80
 util.log 'server listening on 80'
