@@ -1,19 +1,19 @@
-express = require 'express'
-util = require 'util'
-fs = require 'fs'
-http = require 'http'
-{spawn, exec} = require('child_process')
-net = require 'net'
-procfile = require 'procfile'
+async			= require 'async'
+colors			= require 'colors'
+express			= require 'express'
+util			= require 'util'
+fs				= require 'fs'
+http			= require 'http'
+{spawn, exec}	= require 'child_process'
+net				= require 'net'
+procfile		= require 'procfile'
 
-redis = require('redis-url').connect()
-mongoFactory = require 'mongo-connection-factory'
+redis			= require('redis-url').connect()
+mongoFactory 	= require 'mongo-connection-factory'
+ObjectID 		= require('mongodb').ObjectID
 
 mongoUrl = "mongodb://10.1.69.105/gummi"
-ObjectID = require('mongodb').ObjectID
 
-async = require 'async'
-colors = require 'colors'
 
 ###
 

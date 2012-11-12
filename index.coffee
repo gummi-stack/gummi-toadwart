@@ -1,64 +1,27 @@
-express = require 'express'
-util = require 'util'
-fs = require 'fs'
-{spawn, exec} = require('child_process')
-net = require 'net'
-procfile = require 'procfile'
+express 		= require 'express'
+util			= require 'util'
+fs				= require 'fs'
+{spawn, exec}	= require 'child_process'
+net 			= require 'net'
+procfile		= require 'procfile'
 
-Dhcp = require('./lib/dhcp.coffee')
+config			= require './config'
+Dhcp			= require './lib/dhcp.coffee'
+Lxc 			= require './lib/lxc'
 
-dhcp = new Dhcp
-	addresses: '10.1.69.50-10.1.69.99'
-	mask: '255.255.255.0'
-	route: '10.1.69.254'
 
-redis = require('redis-url').connect()
-#mongodb = require 'mongodb'
-
+dhcp = new Dhcp config.dhcp 
 mongoFactory = require 'mongo-connection-factory'
 
 mongoUrl = "mongodb://localhost/gummi"
 
-Lxc = require './lib/lxc'
-
-#server = null
-#col
-#server = new mongodb.Server "localhost", 27017, {}
-#new mongodb.Db('gummi', server, {}).open (err, client) ->
-#	throw err if err
-#	collection = new mongodb.Collection client, 'builds'
-
-
-
 app = express()
 app.use express.bodyParser()
 
-# app.post '/', (req, res)->
-# 	buffer = ''
-# 	req.on 'data', (data) ->
-# 		buffer += data
-# 	req.on 'end', () ->
-# 		lxc = new Lxc
-# 
-# 		data = JSON.parse buffer
-# 		command = data.command
-# 		return unless command
-# 		util.log 'Starting rendezvous: ' + command
-# 
-# 
-# 		env = {}
-# 		env.LOG_CHANNEL = 'kanalek'
-# 		env.LOG_APP = 'appka'
-# 		
-# 		
-# 		###### TODO rozbalit appku
-# 		lxc.setup dhcp.get(), (name) ->
-# 			util.log "lxc name #{name}"
-# 			lxc.rendezvous command, env, (port) ->
-# 				console.log "::#{port}"
-# 				res.send rendezvousURI: "tcp://10.1.69.105:#{port}"
-# 
 
+###
+Start process from slug in new container
+###
 app.post '/ps/start', (req, res) ->
 	file = req.body.slug
 	cmd = req.body.cmd
@@ -115,6 +78,9 @@ app.post '/ps/start', (req, res) ->
 					ip: lease.ip
 					name: lxc.name
 
+###
+Kill process by pid
+###
 app.post '/ps/kill', (req, res) ->
 	util.log util.inspect req.body
 
@@ -129,16 +95,19 @@ app.post '/ps/kill', (req, res) ->
 			status: 'ok'
 			message: 'Process successfully killed'
 
+## TEST
 app.get '/ps/status', (req, res) ->
 	exec "ps #{req.query.pid}", (error, stdout, stderr) ->
 		res.end stdout
 
+## TEST
 app.get '/ps/statusall', (req, res) ->
 	exec "ps afx", (error, stdout, stderr) ->
 		res.end stdout
 
 
 
+## TODO na master
 
 app.get '/git/:repo/:branch/:rev', (req, res) ->
 	p = req.params
@@ -206,6 +175,7 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 				res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
 
 
-app.listen 81
-util.log 'Toadwart serving on 81'
+
+app.listen config.port
+util.log "Toadwart \"#{config.name}\" serving on #{config.port}"
 
