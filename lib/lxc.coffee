@@ -17,6 +17,10 @@ class Lxc extends EventEmitter
 			@name = '' + stdout
 			@name = @name.replace "\n", ""
 			@root = "/var/lib/lxc/#{@name}/rootfs/"
+			
+			util.log stdout
+			util.log stderr
+			
 			cb @name
 			
 
@@ -45,7 +49,13 @@ class Lxc extends EventEmitter
 	rendezvous: (command, env,cb) =>
 		env.LXC_RENDEZVOUS = 1
 		child = fork __dirname + '/lxcserver', [command, @name], {env: env}
-		child.on 'message', cb
+		# child.stdout.on 'data', (data) =>
+		# 	util.log '>>>>>>>> ' + data
+			
+		child.on 'message', (data) ->
+			util.log "$$$$$$$ " + data
+			cb JSON.parse data
+			
 		@process = child
 
 	dispose: (cb) =>

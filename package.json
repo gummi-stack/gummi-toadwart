@@ -11,7 +11,9 @@
 	"redis-url": "*",
 	"procfile": "*",
 	"mongodb": "*",
-	"mongo-connection-factory":"git+ssh://git@gitlab.ccl:mongo-connection-factory.git",
+	"node-uuid": "*",
+	"mongo-connection-factory": "git+ssh://git@gitlab.ccl:mongo-connection-factory.git",
+	"express-swagger-doc": "https://github.com/falsecz/express-swagger-doc/tarball/master",
 	"colors": "*"
   },
   "license": "BSD"

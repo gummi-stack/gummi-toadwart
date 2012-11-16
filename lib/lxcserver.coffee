@@ -5,8 +5,21 @@ command = process.argv[2]
 name = process.argv[3]
 
 manager = __dirname + "/../manage-ephemeral.sh"
+pid = 0
+
+pty = require 'pty.js'
+
+
+term = pty.spawn 'su', ['-c', manager + ' run ' + name + ' -- ' +  command], {
+# term = pty.spawn 'setsid', [manager + ' run ' + name + ' -- ' +  command], {
+	name: 'xterm-color',
+	cols: 80,
+	rows: 50,
+	# cwd: process.env.HOME,
+	# env: process.env
+}
+
 server = net.createServer (socket) =>
-	pty = require 'pty.js'
 	
 	console.log '4343434343434343434343434'
 	util.log util.inspect process.env
@@ -14,13 +27,12 @@ server = net.createServer (socket) =>
 	# term = pty.spawn 'bash', [], {
 	# term = pty.spawn manager, ['run', @name, '--', command], {
 	#term = pty.spawn xmanager, [], {
-	term = pty.spawn 'su', ['-c', manager + ' run ' + name + ' -- ' +  command], {
-		name: 'xterm-color',
-		cols: 80,
-		rows: 50,
-		# cwd: process.env.HOME,
-		# env: process.env
-	}
+		#p = spawn 'setsid', [manager, 'run', @name, '--', command], {env: env}
+		
+	
+	#pid = term.pid
+
+	#util.log "Spawn pid " + pid
 
 	handleTermData = (data) ->
 		socket.write data
@@ -39,5 +51,8 @@ server = net.createServer (socket) =>
 		term.end()
 		util.log 'client disconnected'
 
+
 server.listen null, ->
-	process.send "#{server.address().port}"
+	process.send JSON.stringify 
+		 port: server.address().port
+		 pid: term.pid

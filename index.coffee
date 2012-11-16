@@ -8,6 +8,16 @@ procfile		= require 'procfile'
 config			= require './config'
 Dhcp			= require './lib/dhcp.coffee'
 Lxc 			= require './lib/lxc'
+PsManager		= require './lib/psmanager'
+
+require 'coffee-trace'
+fn = util.inspect
+util.inspect = (a,b,c) -> fn a,b,c,yes
+
+
+psmanager = new PsManager config
+
+
 
 
 dhcp = new Dhcp config.dhcp 
@@ -18,9 +28,27 @@ mongoUrl = "mongodb://localhost/gummi"
 app = express()
 app.use express.bodyParser()
 
+expressSwaggerDoc = require 'express-swagger-doc'
+app.use expressSwaggerDoc(__filename, '/docs')
+
+
+app.get '/', (req, res) ->
+	res.json 
+		name: config.name
+		id:	config.id
+		containersCount: psmanager.getCount()
+		motd: 'You bitch'
+			
 
 ###
 Start process from slug in new container
+
+:file - slug path
+:cmd - command to run
+:rendezvous - start in rendezvous mode
+:logApp - application name for loogging
+:logName - log name  
+
 ###
 app.post '/ps/start', (req, res) ->
 	file = req.body.slug
@@ -51,7 +79,7 @@ app.post '/ps/start', (req, res) ->
 		# file = req.query.slug
 		# env = JSON.parse req.query.env
 		# cmd = req.query.cmd
-		console.log "tar -C #{approot}/ -xzf #{file}"
+		# console.log "tar -C #{approot}/ -xzf #{file}"
 		# for key, val of env
 		# 		    util.log key, val
 		# 		    process.env[key] = val
@@ -59,24 +87,29 @@ app.post '/ps/start', (req, res) ->
 		env.LOG_CHANNEL = logName
 		env.LOG_APP = logApp
 		env.LOG_CMD = cmd
+		env.GUMMI_ID = config.id
 		
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
+			
+			port = 5000
 			if rendezvous
-				lxc.rendezvous '/buildpacks/startup /app run ' + cmd, env, (port) ->
-					console.log "::#{port}"
-					res.json 
-						rendezvousURI: "tcp://10.1.69.105:#{port}"
-						pid: lxc.process.pid
-						ip: lease.ip
-						name: lxc.name
+				lxc.rendezvous '/buildpacks/startup /app run ' + cmd, env, (data) ->
+					# console.log "::#{port}"
+					
+					pso = psmanager.add data.pid, lxc.name, lease.ip, data.port
+					pso.rendezvousURI = "tcp://10.1.69.105:#{data.port}"
+					res.json pso
+						
 						
 			else
 				lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
 					lxc.dispose () ->
-				res.json
-					pid: lxc.process.pid
-					ip: lease.ip
-					name: lxc.name
+						
+				pso = psmanager.add lxc.process.pid, name, lease.ip, port
+				res.json pso
+
+	
+	
 
 ###
 Kill process by pid
@@ -89,6 +122,8 @@ app.post '/ps/kill', (req, res) ->
 	catch err
 		util.log "#{req.body.name} #{req.body.pid} uz byl asi mrtvej" 
 		
+	psmanager.remove req.body.pid
+	
 	lxc = new Lxc req.body.name
 	lxc.dispose () ->
 		res.json 
@@ -97,8 +132,9 @@ app.post '/ps/kill', (req, res) ->
 
 ## TEST
 app.get '/ps/status', (req, res) ->
-	exec "ps #{req.query.pid}", (error, stdout, stderr) ->
-		res.end stdout
+	res.json psmanager.pids
+	# exec "ps #{req.query.pid}", (error, stdout, stderr) ->
+	# 	res.end stdout
 
 ## TEST
 app.get '/ps/statusall', (req, res) ->
