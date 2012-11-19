@@ -1,5 +1,6 @@
 exec = require("child_process").exec
 fs = require 'fs'
+util = require 'util'
 
 class Dhcp
 
@@ -35,6 +36,7 @@ class Dhcp
 
 		@_pool[ip] = null
 		@_lease ip if backup.indexOf(ip) > -1
+		
 
 		while ip isnt max
 			pos = 3
@@ -45,7 +47,8 @@ class Dhcp
 			ip = parsed.join('.')
 			@_pool[ip] = null
 			@_lease ip if backup.indexOf(ip) > -1
-
+		
+		
 
 	###
 		@return {
@@ -53,7 +56,7 @@ class Dhcp
 			everything_other: "from config"
 		}
 	###
-	get: () ->
+	get: () =>
 		for ip of @_pool
 			if @_pool[ip] is null
 				@_lease ip
@@ -75,11 +78,14 @@ class Dhcp
 
 	_lease: (ip) =>
 		@_pool[ip] = new Date
-		@_leased[ip] = setInterval ( () =>
+
+		check = () =>
 			exec "ping -c 1 -w 5 #{ip}", (error, stdout, stderr) =>
 				# pokud zarizeni neodpovida, skonci to chybou
 				@_cancel ip if error
-		), 1000 * 60
+
+		@_leased[ip] = setInterval check, 1000 * 5
+		check()
 		@_backup()
 
 

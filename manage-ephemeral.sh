@@ -96,6 +96,7 @@ clean_container()
 	LXC_NAME=$1
 	setup_variables
 
+	lxc-stop -n $LXC_NAME  # aby se zabranilo hnilobe
 	sudo umount $EPHEMERAL_BIND_DIR
 	sudo umount $LXC_DIR
 	sudo umount $OVERLAY_DIR

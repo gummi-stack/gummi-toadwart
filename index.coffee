@@ -30,7 +30,8 @@ app.use express.bodyParser()
 
 expressSwaggerDoc = require 'express-swagger-doc'
 app.use expressSwaggerDoc(__filename, '/docs')
-
+app.use app.router
+app.use express.errorHandler()
 
 app.get '/', (req, res) ->
 	res.json 
@@ -92,6 +93,7 @@ app.post '/ps/start', (req, res) ->
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
 			
 			port = 5000
+			env.PORT = port
 			if rendezvous
 				lxc.rendezvous '/buildpacks/startup /app run ' + cmd, env, (data) ->
 					# console.log "::#{port}"
@@ -118,18 +120,22 @@ app.post '/ps/kill', (req, res) ->
 	util.log util.inspect req.body
 
 	try 
+		throw new Error 'Invalid pid' unless req.body.pid
 		process.kill(req.body.pid * -1)
 	catch err
 		util.log "#{req.body.name} #{req.body.pid} uz byl asi mrtvej" 
-		
+
 	psmanager.remove req.body.pid
 	
 	lxc = new Lxc req.body.name
+	# util.log 'disposuju'
 	lxc.dispose () ->
+		# util.log 'disposujuxxx'
 		res.json 
 			status: 'ok'
 			message: 'Process successfully killed'
 
+	
 ## TEST
 app.get '/ps/status', (req, res) ->
 	res.json psmanager.pids
