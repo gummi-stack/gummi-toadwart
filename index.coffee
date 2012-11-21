@@ -33,12 +33,12 @@ app.use expressSwaggerDoc(__filename, '/docs')
 app.use app.router
 app.use express.errorHandler()
 
-app.get '/', (req, res) ->
-	res.json 
-		name: config.name
-		id:	config.id
-		containersCount: psmanager.getCount()
-		motd: 'You bitch'
+# app.get '/', (req, res) ->
+# 	res.json 
+# 		name: config.name
+# 		id:	config.id
+# 		containersCount: psmanager.getCount()
+# 		motd: 'You bitch'
 			
 
 ###
@@ -58,19 +58,20 @@ app.post '/ps/start', (req, res) ->
 	rendezvous = req.body.rendezvous
 	logApp = req.body.logApp
 	logName = req.body.logName
-
+	# console.log '---------=-=-=-=-'
+	# util.log util.inspect req.body
 	return res.json error: 'Missing slug' unless file
 
 	lxc = new Lxc
 
 	lxc.on 'data', (data) ->
-		util.print "dada " + data
+		# util.print "dada " + data
 
 	lxc.on 'error', (data) ->
-		util.print 'ERR: ' + data
+		# util.print 'ERR: ' + data
 
-	lxc.on 'exit', (code) ->
-		util.print 'EXIT: ' + code
+	# lxc.on 'exit', (code) ->
+	# 	util.print 'EXIT: ' + code
 
 	lease = dhcp.get()
 	lxc.setup lease, (name) ->
@@ -117,7 +118,7 @@ app.post '/ps/start', (req, res) ->
 Kill process by pid
 ###
 app.post '/ps/kill', (req, res) ->
-	util.log util.inspect req.body
+	# util.log util.inspect req.body
 
 	try 
 		throw new Error 'Invalid pid' unless req.body.pid
@@ -138,7 +139,13 @@ app.post '/ps/kill', (req, res) ->
 	
 ## TEST
 app.get '/ps/status', (req, res) ->
-	res.json psmanager.pids
+	
+	res.json 
+		name: config.name
+		id:	config.id
+		containersCount: psmanager.getCount()
+		motd: 'You bitch'
+		processes: psmanager.pids
 	# exec "ps #{req.query.pid}", (error, stdout, stderr) ->
 	# 	res.end stdout
 
@@ -203,6 +210,7 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 				env = {}
 				env.LOG_CHANNEL = 'TODOkanalek'
 				env.LOG_APP = 'TODOappka'
+				env.LXC_RENDEZVOUS = 1
 				res.write "excuju  \n"
 				lxc.exec '/buildpacks/startup /app', env, (exitCode) ->
 					exec "tar -Pczf #{slug} -C #{approot} .", (error, stdout, stderr) ->
@@ -210,6 +218,7 @@ app.get '/git/:repo/:branch/:rev', (req, res) ->
 							db.collection 'builds', (err, collection) ->
 								collection.insert buildData
 
+						util.log "Exit CODE: " + exitCode
 						exit exitCode
 
 		exit = (exitCode) ->

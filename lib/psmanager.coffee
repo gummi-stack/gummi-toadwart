@@ -2,6 +2,7 @@ fs 		= require 'fs'
 {exec}	= require 'child_process'
 util	= require 'util'
 uuid	= require 'node-uuid'
+colors	= require 'colors'
 
 
 delay = (ms, func) -> setTimeout func, ms
@@ -25,8 +26,8 @@ module.exports = class PsManager
 			ip: ip
 			port: port
 		
-		util.log 'Ukladam'
-		util.log util.inspect p
+		util.log "Started ".green + p.pid + "\t" + p.name
+		# util.log util.inspect p
 			
 		fs.writeFileSync "#{@temp}/#{pid}", JSON.stringify p
 		@pids[pid] = p
@@ -39,7 +40,7 @@ module.exports = class PsManager
 		cnt
 		
 	remove: (pid) =>
-		util.log 'Mazu ' + pid
+		util.log "Stopped ".yellow + pid
 
 		delete @pids[pid]
 		try

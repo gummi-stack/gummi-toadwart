@@ -5,7 +5,6 @@ UNION="overlayfs"
 RLOGR=/root/toadwart/rlogr/rlogr
 
 
-
 on_die()
 {
 	echo "Stopped container for $LOG_APP" | $RLOGR  -s $LOG_CHANNEL -a dyno
@@ -107,8 +106,9 @@ clean_container()
 
 run_container()
 {
+	echo 'xxxxxxx'
+	echo $CMD
 	echo "Starting container for $LOG_APP $LOG_CMD" | $RLOGR  -s $LOG_CHANNEL -a dyno
-	
 	
 	# TODO presmerovavat  2>&1 kdyz neni rendezvous
 	
