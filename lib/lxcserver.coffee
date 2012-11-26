@@ -9,12 +9,15 @@ pid = 0
 
 pty = require 'pty.js'
 
+# rows = process.env.LXC_LINES
+rows = parseInt(process.env.LXC_LINES) || 40
+cols = parseInt(process.env.LXC_COLUMNS) || 80
 
 term = pty.spawn 'su', ['-c', manager + ' run ' + name + ' -- ' +  command], {
 # term = pty.spawn 'setsid', [manager + ' run ' + name + ' -- ' +  command], {
 	name: 'xterm-color',
-	cols: 80,
-	rows: 50,
+	cols: cols,
+	rows: rows,
 	# cwd: process.env.HOME,
 	# env: process.env
 }

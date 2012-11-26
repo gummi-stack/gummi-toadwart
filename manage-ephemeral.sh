@@ -106,8 +106,7 @@ clean_container()
 
 run_container()
 {
-	echo 'xxxxxxx'
-	echo $CMD
+	# echo $CMD
 	echo "Starting container for $LOG_APP $LOG_CMD" | $RLOGR  -s $LOG_CHANNEL -a dyno
 	
 	# TODO presmerovavat  2>&1 kdyz neni rendezvous
@@ -118,6 +117,7 @@ run_container()
 	else
 		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 2>&1 | $RLOGR -t -s $LOG_CHANNEL -a $LOG_APP		
 	fi
+	EXITCODE=$?
 	echo "Stopped container for $LOG_APP" | $RLOGR  -s $LOG_CHANNEL -a dyno
 	
 }
@@ -142,7 +142,7 @@ elif [ "$action" = "run" ]; then
 		exit 1
 	fi
 	run_container
-	exit $?
+	exit $EXITCODE
 	
 elif [ "$action" = "clean" ]; then
 	clean_container $2
