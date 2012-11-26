@@ -94,9 +94,9 @@ app.post '/ps/start', (req, res) ->
 		env.LOG_CMD = cmd
 		env.GUMMI_ID = config.id
 		
-		
-		env.LXC_LINES = userEnv.LINES
-		env.LXC_COLUMNS = userEnv.COLUMNS
+		if userEnv
+			env.LXC_LINES = userEnv.LINES
+			env.LXC_COLUMNS = userEnv.COLUMNS
 		
 		exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
 			
