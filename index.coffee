@@ -179,7 +179,7 @@ bootstrap () ->
 						# console.log "::#{port}"
 					
 						pso = psmanager.add data.pid, lxc.name, lease.ip, data.port
-						pso.rendezvousURI = "tcp://10.1.69.105:#{data.port}"
+						pso.rendezvousURI = "tcp://#{config.ip}:#{data.port}"
 						res.json pso
 						
 						
