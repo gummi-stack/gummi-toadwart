@@ -11,7 +11,9 @@ module.exports = class PsManager extends EventEmiter
 	constructor: (@config) ->
 		
 		@temp = '/var/run/toadwart'
-		fs.mkdirSync @temp
+		try
+			fs.mkdirSync @temp
+		catch err
 		
 		@pids = {}
 		
