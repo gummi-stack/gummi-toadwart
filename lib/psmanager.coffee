@@ -3,19 +3,20 @@ fs 		= require 'fs'
 util	= require 'util'
 uuid	= require 'node-uuid'
 colors	= require 'colors'
-
+EventEmiter = require('events').EventEmitter
 
 delay = (ms, func) -> setTimeout func, ms
 
-module.exports = class PsManager
+module.exports = class PsManager extends EventEmiter
 	constructor: (@config) ->
-		@temp = @config.temp
+		@temp = __dirname + '/../tmp'
 		
 		@pids = {}
 		
 		@loadPids()
+	run: () =>
 		@checkPids()
-
+		
 	add: (pid, name, ip, port) ->
 		p = 
 			pid: pid
@@ -42,6 +43,8 @@ module.exports = class PsManager
 	remove: (pid) =>
 		util.log "Stopped ".yellow + pid
 
+		@emit 'remove', @pids[pid]
+		
 		delete @pids[pid]
 		try
 			fs.unlinkSync "#{@temp}/#{pid}"

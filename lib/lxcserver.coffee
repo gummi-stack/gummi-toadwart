@@ -9,23 +9,19 @@ pid = 0
 
 pty = require 'pty.js'
 
-# rows = process.env.LXC_LINES
 rows = parseInt(process.env.LXC_LINES) || 40
 cols = parseInt(process.env.LXC_COLUMNS) || 80
 
 term = pty.spawn 'su', ['-c', manager + ' run ' + name + ' -- ' +  command], {
-# term = pty.spawn 'setsid', [manager + ' run ' + name + ' -- ' +  command], {
 	name: 'xterm-color',
 	cols: cols,
 	rows: rows,
-	# cwd: process.env.HOME,
-	# env: process.env
 }
 
 server = net.createServer (socket) =>
 	
-	console.log '4343434343434343434343434'
-	util.log util.inspect process.env
+	# console.log '4343434343434343434343434'
+	# util.log util.inspect process.env
 	
 	# term = pty.spawn 'bash', [], {
 	# term = pty.spawn manager, ['run', @name, '--', command], {

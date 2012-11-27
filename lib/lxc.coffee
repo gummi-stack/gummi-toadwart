@@ -55,13 +55,13 @@ class Lxc extends EventEmitter
 		# 	util.log '>>>>>>>> ' + data
 			
 		child.on 'message', (data) ->
-			util.log "$$$$$$$ " + data
+			# util.log "$$$$$$$ " + data
 			cb JSON.parse data
 			
 		@process = child
 
 	dispose: (cb) =>
 		exec "#{manager} clean #{@name}", (err, stdout, stderr) =>
-			cb()
+			cb?()
 		
 module.exports = Lxc

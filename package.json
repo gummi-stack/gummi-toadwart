@@ -2,20 +2,21 @@
   "name": "toadwart",
   "version": "0.9.0",
   "main": "index.coffee",
+  "bin": {
+	 "gummi": "./bin/toadwart"
+  },
   "dependencies": {
     "express": "*",
     "async": "*",
 	"pty.js": "*",
-	"redis": "*",
-	"hiredis": "*",
-	"redis-url": "*",
 	"procfile": "*",
 	"node-uuid": "*",
 	"express-swagger-doc": "https://github.com/falsecz/express-swagger-doc/tarball/master",
 	"colors": "*",
 	"request": "*",
-	"filesize": "*"
-	
+	"filesize": "*",
+	"libyaml": "*",
+	"coffee-trace": "*"
   },
   "license": "BSD"
 }
