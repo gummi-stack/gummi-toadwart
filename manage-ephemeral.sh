@@ -2,7 +2,7 @@
 
 LXC_BASE="child"
 UNION="overlayfs"
-RLOGR=/root/toadwart/rlogr/rlogr
+RLOGR="/root/toadwart/rlogr/rlogr -h 10.1.69.105 "
 
 
 on_die()
