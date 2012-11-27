@@ -9,7 +9,9 @@ delay = (ms, func) -> setTimeout func, ms
 
 module.exports = class PsManager extends EventEmiter
 	constructor: (@config) ->
-		@temp = __dirname + '/../tmp'
+		
+		@temp = '/var/run/toadwart'
+		fs.mkdirSync @temp
 		
 		@pids = {}
 		

@@ -21,7 +21,7 @@ config = {}
 
 bootstrap = (done) ->
 	argv = process.argv
-	path = __dirname + '/config.yaml'
+	path = '/etc/toadwart.yaml'
 	try 
 		[config] = yaml.readFileSync(path)
 	catch err
