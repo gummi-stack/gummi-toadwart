@@ -3,7 +3,7 @@
   "version": "0.9.0",
   "main": "index.coffee",
   "bin": {
-	 "gummi": "./bin/toadwart"
+	 "toadwart": "./bin/toadwart"
   },
   "dependencies": {
     "express": "*",
