@@ -13,9 +13,13 @@ Dhcp			= require './lib/dhcp.coffee'
 Lxc 			= require './lib/lxc'
 PsManager		= require './lib/psmanager'
 
+storage			= require './lib/storage/'
+
 require 'coffee-trace'
 fn = util.inspect
 util.inspect = (a,b,c) -> fn a,b,c,yes
+
+
 
 config = {}
 
@@ -126,7 +130,7 @@ bootstrap () ->
 
 	###
 	app.post '/ps/start', (req, res) ->
-		file = req.body.slug
+		slug = req.body.slug
 		cmd = req.body.cmd
 		env = req.body.env
 		userEnv = req.body.userEnv 
@@ -135,7 +139,7 @@ bootstrap () ->
 		logName = req.body.logName
 		# console.log '---------=-=-=-=-'
 		# util.log util.inspect req.body
-		return res.json error: 'Missing slug' unless file
+		return res.json error: 'Missing slug' unless slug
 
 		lxc = new Lxc
 
@@ -169,26 +173,28 @@ bootstrap () ->
 			if userEnv
 				env.LXC_LINES = userEnv.LINES
 				env.LXC_COLUMNS = userEnv.COLUMNS
-		
-			exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
 			
-				port = 5000
-				env.PORT = port
-				if rendezvous
-					lxc.rendezvous '/buildpacks/startup /app run ' + cmd, env, (data) ->
-						# console.log "::#{port}"
+			storage.getSlug slug, (err, tmp) ->
+				exec "tar -C #{approot}/ -xzf #{tmp}", (error, stdout, stderr) ->
+					fs.unlinkSync tmp
 					
-						pso = psmanager.add data.pid, lxc.name, lease.ip, data.port
-						pso.rendezvousURI = "tcp://#{config.ip}:#{data.port}"
+					port = 5000
+					env.PORT = port
+					if rendezvous
+						lxc.rendezvous '/buildpacks/startup /app run ' + cmd, env, (data) ->
+							# console.log "::#{port}"
+					
+							pso = psmanager.add data.pid, lxc.name, lease.ip, data.port
+							pso.rendezvousURI = "tcp://#{config.ip}:#{data.port}"
+							res.json pso
+						
+						
+					else
+						lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
+							lxc.dispose () ->
+						
+						pso = psmanager.add lxc.process.pid, name, lease.ip, port
 						res.json pso
-						
-						
-				else
-					lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
-						lxc.dispose () ->
-						
-					pso = psmanager.add lxc.process.pid, name, lease.ip, port
-					res.json pso
 
 	
 	
@@ -239,94 +245,97 @@ bootstrap () ->
 		p = req.body
 
 		fileName = "#{p.repo}-#{p.branch}-#{p.rev}"
-		file = "/shared/git-archive/#{fileName}.tar.gz"
-		slug = "/shared/slugs/#{fileName}.tgz"
+		slugName = "#{fileName}.tgz"
+
 		process.env.TERM = 'xterm'
 		callbackUrl = p.callbackUrl
 		
-		util.log "Building #{p.repo} #{p.branch} #{p.rev}".green
+		storage.getGitArchive "#{fileName}.tar.gz", (err, archive) ->
+			return util.log util.inspect err if err
+		
+			util.log "Building #{p.repo} #{p.branch} #{p.rev}".green
 
-		lxc = new Lxc
+			lxc = new Lxc
 
-		exit = (exitCode) ->
-			lxc.dispose ->
-				util.log "Done #{p.repo} #{p.branch} #{p.rev} with code #{exitCode}".yellow
-				res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
-
-
-		lxc.on 'data', (data) ->
-			res.write data
-
-		lxc.on 'error', (data) ->
-			res.write data
+			exit = (exitCode) ->
+				exitCode = 1 unless exitCode? 
+				lxc.dispose ->
+					util.log "Done #{p.repo} #{p.branch} #{p.rev} with code #{exitCode}".yellow
+					res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
 
 
-		lxc.setup dhcp.get(), (name)->
-			# util.log "lxc name #{name}"
-			# res.write "lxc name #{name}\n"
+			lxc.on 'data', (data) ->
+				res.write data
 
-			# util.log
-			approot = "#{lxc.root}app"
-			fs.mkdirSync approot
+			lxc.on 'error', (data) ->
+				res.write data
 
-			# util.log "tar -C #{approot} -xvzf #{file}"
-			# res.write "rozbaluju \n"			
-			exec "tar -C #{approot}/ -xzf #{file}", (error, stdout, stderr) ->
-				# res.write "rozbaleno 	\n"			
-				files = fs.readdirSync approot
-				# util.log util.inspect files
-				# res.write util.inspect files
-				# res.write "\n"
+
+			lxc.setup dhcp.get(), (name)->
+				approot = "#{lxc.root}app"
+				fs.mkdirSync approot
+
+
+				# Rozbalim zdrojaky z gitu do /app
+				exec "tar -C #{approot}/ -xzf #{archive}", (error, stdout, stderr) ->
+					# TODO unlink archive
+					files = fs.readdirSync approot
 						
 
-				try
-					procData = fs.readFileSync("#{approot}/Procfile").toString()
-					procData = procfile.parse procData
+					try
+						procData = fs.readFileSync("#{approot}/Procfile").toString()
+						procData = procfile.parse procData
 
-				catch e
-					res.write "ERR: Missing procfile\n"
-					return exit 1
+					catch e
+						res.write "ERR: Missing procfile\n"
+						return exit 1
 
 
-				buildData =
-					app: p.repo
-					branch: p.branch
-					rev: p.rev
-					timestamp: new Date
-					slug: slug
-					procfile: procData
+					buildData =
+						app: p.repo
+						branch: p.branch
+						rev: p.rev
+						timestamp: new Date
+						slug: slugName 
+						procfile: procData
 
-				env = {}
-				env.LOG_CHANNEL = 'TODOkanalek'
-				env.LOG_APP = 'TODOappka'
-				env.LXC_RENDEZVOUS = 1
+					env = {}
+					env.LOG_CHANNEL = 'TODOkanalek'
+					env.LOG_APP = 'TODOappka'
+					env.LXC_RENDEZVOUS = 1
+					# pustim buildpack
+					lxc.exec '/buildpacks/startup /app', env, (exitCode) ->
 
-				lxc.exec '/buildpacks/startup /app', env, (exitCode) ->
-					exec "tar -Pczf #{slug} -C #{approot} .", (error, stdout, stderr) ->
-						# buildData
+						# zabalim slug do tempu
+						# todo smazat slug
+						slugTemp = "/tmp/#{fileName}.tar.gz"
+						exec "tar -Pczf #{slugTemp} -C #{approot} .", (error, stdout, stderr) ->
+							
+							storage.putSlug slugTemp, slugName, (err) ->
+								util.log util.inspect err if err
+								
+								stat = fs.statSync slugTemp
+								buildData.slugSize = stat.size
+								fs.unlinkSync slugTemp
+								
+								procTypes = []
+								procTypes.push key for key, val of procData
+								res.write "> Procfile declares types -> #{procTypes.join ' '}\n"
+								res.write "> Compiled slug size: #{filesize(buildData.slugSize)}\n"
 					
-						stat = fs.statSync slug
-						buildData.slugSize = stat.size
-					
-						procTypes = []
-						procTypes.push key for key, val of procData
-						res.write "> Procfile declares types -> #{procTypes.join ' '}\n"
-						res.write "> Compiled slug size: #{filesize(buildData.slugSize)}\n"
-					
-						request {uri: callbackUrl, method: 'POST', json: buildData}, (err, response, body) ->
-							throw err if err
-							if body?.status isnt 'ok'
-								res.write "ERR: Couldn't save build on api\n"
-								res.write util.inspect body
-								res.write "\n"
-								return exit 1
+								request {uri: callbackUrl, method: 'POST', json: buildData}, (err, response, body) ->
+									throw err if err
+									if body?.status isnt 'ok'
+										res.write "ERR: Couldn't save build on api\n"
+										res.write util.inspect body
+										res.write "\n"
+										return exit 1
 
-							res.write "> Build stored: v#{body.version}\n"
-
-							exit exitCode
+									res.write "> Build stored: v#{body.version}\n"
+									exit exitCode
 
 
 
 	app.listen config.port
-	util.log "Toadwart \"#{config.name}\" serving on #{config.port}"
+	util.log "Toadwart \"#{config.name}\" serving on #{config.port}".yellow
 

@@ -1,1 +1,10 @@
-YAML: YAML Ain't Markup Language
+---
+id: f2176ac1-9cfc-4036-aa8d-bc4ef3e366cb
+dhcp:
+  route: 192.168.73.2
+  addresses: 192.168.73.2-192.168.73.254
+  mask: 255.255.255.0
+port: 81
+ip: 10.1.69.105
+name: stoupa-lukas-vbox1
+...
