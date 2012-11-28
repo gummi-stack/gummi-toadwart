@@ -46,7 +46,10 @@ module.exports = class PsManager extends EventEmiter
 		
 	remove: (pid) =>
 		util.log "Stopped ".yellow + pid
-
+		unless @pids[pid]
+			util.log "#{pid} neni muj".red
+			return
+			
 		@emit 'remove', @pids[pid]
 		
 		delete @pids[pid]
