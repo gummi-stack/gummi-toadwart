@@ -228,6 +228,8 @@ bootstrap () ->
 		res.json 
 			name: config.name
 			id:	config.id
+			ip: config.ip
+			port: config.port
 			containersCount: psmanager.getCount()
 			motd: 'You bitch'
 			processes: psmanager.pids
