@@ -5,7 +5,7 @@ key = "#{__dirname}/id_dsa"
 fs.chmodSync key, 0o600
 
 get = (from, to, done) ->
-	cmd = "scp -i #{key} cdn@10.1.69.105:#{from} #{to}"
+	cmd = "scp -o StrictHostKeyChecking=no -i #{key} cdn@10.1.69.105:#{from} #{to}"
 	# console.log cmd
 	exec cmd, (err, stdout, stderr) ->
 		er = err or stderr
