@@ -176,7 +176,8 @@ bootstrap () ->
 			
 			storage.getSlug slug, (err, tmp) ->
 				exec "tar -C #{approot}/ -xzf #{tmp}", (error, stdout, stderr) ->
-					fs.unlinkSync tmp
+					fs.unlink tmp, () ->
+						
 					
 					port = 5000
 					env.PORT = port
@@ -318,7 +319,7 @@ bootstrap () ->
 								
 								stat = fs.statSync slugTemp
 								buildData.slugSize = stat.size
-								fs.unlinkSync slugTemp
+								fs.unlink slugTemp, () ->
 								
 								procTypes = []
 								procTypes.push key for key, val of procData
