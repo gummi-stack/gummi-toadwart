@@ -75,6 +75,9 @@ update_config() {
     echo LXC_IP=$LXC_IP >> $cfg
     echo LXC_MASK=$LXC_MASK >> $cfg
     echo LXC_ROUTE=$LXC_ROUTE >> $cfg
+	
+	## TODO zvazit i jine varianty
+	cp /etc/resolv.conf $LXC_DIR/rootfs/etc/resolv.conf
 }
 
 do_mount() {

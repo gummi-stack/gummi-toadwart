@@ -16,7 +16,8 @@
 	"request": "*",
 	"filesize": "*",
 	"libyaml": "*",
-	"coffee-trace": "*"
+	"coffee-trace": "*",
+	"netmask": "*"
   },
   "license": "BSD"
 }
