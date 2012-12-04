@@ -14,7 +14,7 @@ exports.manage = (o) ->
 	if argv[2] is 'config'
 		if argv.length is 3
 			console.log util.inspect config
-			process.exit 1
+			process.exit 0
 			
 		else unless argv.length is 5
 			console.log 'Incorrect params'
@@ -35,7 +35,7 @@ exports.manage = (o) ->
 
 		yaml.writeFileSync(o.path, config)
 			
-		process.exit 1
+		process.exit 0
 
 	for r in o.required 
 		parts = r.split '.'

@@ -324,5 +324,5 @@ bootstrap () ->
 
 
 		app.listen config.port
-		util.log "Toadwart \"#{config.name}\" serving on #{config.port}".yellow
+		util.log "Toadwart \"#{config.name}\" serving on #{config.port}".green
 
