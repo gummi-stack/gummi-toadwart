@@ -19,8 +19,8 @@ class Lxc extends EventEmitter
 			@root = "/var/lib/lxc/#{@name}/rootfs/"
 			# console.log @root
 			
-			# util.log stdout
-			# util.log stderr
+			util.log stdout
+			util.log stderr
 			
 			cb @name
 			
