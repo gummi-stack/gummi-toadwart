@@ -1,6 +1,6 @@
 {exec} = require('child_process')
 fs = require 'fs'
-
+uuid = require 'node-uuid'
 key = "#{__dirname}/id_dsa"
 fs.chmodSync key, 0o600
 
@@ -20,12 +20,12 @@ put = (from, to, done) ->
 		done err, to
 
 exports.getGitArchive = (name, done) ->
-	get "git/#{name}", "/tmp/#{name}", done
+	get "git/#{name}", "/tmp/#{name}-#{uuid.v4()}", done
 
 exports.putSlug = (path, name, done) ->
 	put path, "slugs/#{name}", done
 
 exports.getSlug = (name, done) ->
-	get "slugs/#{name}", "/tmp/#{name}", done
+	get "slugs/#{name}", "/tmp/#{name}-#{uuid.v4()}", done
 	
 	

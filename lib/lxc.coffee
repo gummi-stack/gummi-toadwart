@@ -12,11 +12,12 @@ manager = __dirname + "/../manage-ephemeral.sh"
 class Lxc extends EventEmitter
 	constructor: ( @name ) ->
 
-	setup: (lan, cb) =>
-		exec "LXC_IP=#{lan.ip} LXC_MASK=#{lan.mask} LXC_ROUTE=#{lan.route} #{manager} setup", (err, stdout, stderr) =>
-			@name = '' + stdout
+	setup: (lan, name, cb) =>
+		exec "LXC_IP=#{lan.ip} LXC_MASK=#{lan.mask} LXC_ROUTE=#{lan.route} #{manager} setup #{name}", (err, stdout, stderr) =>
+			@name = name
 			@name = @name.replace "\n", ""
 			@root = "/var/lib/lxc/#{@name}/rootfs/"
+			# console.log @root
 			
 			# util.log stdout
 			# util.log stderr
@@ -25,8 +26,10 @@ class Lxc extends EventEmitter
 			
 
 	exec: (command, env, cb) =>
-		env.PATH = process.env.PATH 
-		
+		env.PATH ?= process.env.PATH 
+		env.TEMP_PATH = env.PATH 
+		# util.log '-ev-ev-e-ve-ve-'
+		# util.log util.inspect env
 		p = spawn 'setsid', [manager, 'run', @name, '--', command], {env: env}
 #		logr = spawn '/root/rlogr/rlogr', ['-t', '-s test2']
 		
@@ -42,7 +45,7 @@ class Lxc extends EventEmitter
 			@emit 'data', data
 		p.stderr.on 'data', (data) =>
 			# util.log data
-			@emit 'error', data
+			@emit 'data', data
 
 		p.on 'exit', (code) =>
 			@emit 'exit', code
@@ -52,7 +55,10 @@ class Lxc extends EventEmitter
 
 	rendezvous: (command, env,cb) =>
 		env.LXC_RENDEZVOUS = 1
-		env.PATH = process.env.PATH 
+		env.PATH ?= process.env.PATH 
+		env.TEMP_PATH = env.PATH 
+		
+		util.log util.inspect env
 		child = fork __dirname + '/lxcserver', [command, @name], {env: env}
 		# child.stdout.on 'data', (data) =>
 		# 	util.log '>>>>>>>> ' + data
