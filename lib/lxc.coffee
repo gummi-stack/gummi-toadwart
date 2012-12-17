@@ -15,7 +15,7 @@ class Lxc extends EventEmitter
 	setup: (lan, name, cb) =>
 		util.log util.inspect process.env.PATH 
 		
-		process.env.PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games"
+		# process.env.PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games"
 		exec "LXC_IP=#{lan.ip} LXC_MASK=#{lan.mask} LXC_ROUTE=#{lan.route} #{manager} setup #{name}", (err, stdout, stderr) =>
 			@name = name
 			@name = @name.replace "\n", ""
