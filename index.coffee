@@ -21,7 +21,7 @@ util.inspect = (a,b,c) -> fn a,b,c,yes
 config = {}
 
 bootstrap = (done) ->
-	
+	util.log "PATH:" + process.env.PATH
 	configManager = require './lib/configManager'
 
 	config = configManager.manage
@@ -34,6 +34,8 @@ bootstrap = (done) ->
 
 	
 	exec 'mknod /dev/udp c 30 32', ->
+		# todo checkovat zda se povedlo vytvorit
+		
 		util.inspect fs.statSync '/dev/udp'
 		
 		done()
