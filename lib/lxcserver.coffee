@@ -11,7 +11,7 @@ pty = require 'pty.js'
 
 rows = parseInt(process.env.LXC_LINES) || 40
 cols = parseInt(process.env.LXC_COLUMNS) || 80
-
+console.log 'spsp ' + process.env.PATH
 term = pty.spawn 'su', ['-c', manager + ' run ' + name + ' -- ' +  command], {
 	name: 'xterm-color',
 	cols: cols,
