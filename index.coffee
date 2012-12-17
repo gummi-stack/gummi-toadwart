@@ -33,7 +33,10 @@ bootstrap = (done) ->
 				userResolv: yes
 
 	
-	done()
+	exec 'mknod /dev/udp c 30 32', ->
+		util.inspect fs.statSync '/dev/udp'
+		
+		done()
 		
 
 	
