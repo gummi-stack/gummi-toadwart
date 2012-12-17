@@ -29,7 +29,7 @@ class Lxc extends EventEmitter
 			
 
 	exec: (command, env, cb) =>
-		env.PATH ?= process.env.PATH 
+		env.PATH = process.env.PATH 
 		env.TEMP_PATH = env.PATH 
 		# util.log '-ev-ev-e-ve-ve-'
 		# util.log util.inspect env
@@ -58,7 +58,7 @@ class Lxc extends EventEmitter
 
 	rendezvous: (command, env,cb) =>
 		env.LXC_RENDEZVOUS = 1
-		env.PATH ?= process.env.PATH 
+		env.PATH = process.env.PATH 
 		env.TEMP_PATH = env.PATH 
 		
 		util.log util.inspect env
