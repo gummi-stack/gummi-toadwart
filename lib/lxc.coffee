@@ -29,8 +29,8 @@ class Lxc extends EventEmitter
 			
 
 	exec: (command, env, cb) =>
-		env.PATH = process.env.PATH 
 		env.TEMP_PATH = env.PATH 
+		env.PATH = process.env.PATH 
 		# util.log '-ev-ev-e-ve-ve-'
 		# util.log util.inspect env
 		p = spawn 'setsid', [manager, 'run', @name, '--', command], {env: env}
@@ -58,8 +58,8 @@ class Lxc extends EventEmitter
 
 	rendezvous: (command, env,cb) =>
 		env.LXC_RENDEZVOUS = 1
-		env.PATH = process.env.PATH 
 		env.TEMP_PATH = env.PATH 
+		env.PATH = process.env.PATH 
 		
 		util.log util.inspect env
 		child = fork __dirname + '/lxcserver', [command, @name], {env: env}
