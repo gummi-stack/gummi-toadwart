@@ -5,13 +5,15 @@ UNION="overlayfs"
 # RLOGR="/root/toadwart/rlogr/rlogr -h 10.1.69.105 "
 RLOGR="/dev/udp/10.1.69.105/7777"
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 if [ "$DYNO_UUID" = "" ]; then
     DYNO_UUID=unknown-manage
 fi
 
 on_die()
 {
-	echo "Stopped container $LXC_NAME for $LOG_APP" | ./pr -u $DYNO_UUID > $RLOGR   #$RLOGR  -s $LOG_CHANNEL -a dyno
+	echo "Stopped container $LXC_NAME for $LOG_APP" | $DIR/pr -u $DYNO_UUID > $RLOGR   #$RLOGR  -s $LOG_CHANNEL -a dyno
 
     # Need to exit the script explicitly when done.
     # Otherwise the script would live on, until system
@@ -118,7 +120,7 @@ clean_container()
 run_container()
 {
 	# echo $CMD
-	echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD" | ./pr -u $DYNO_UUID > $RLOGR
+	echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD" | $DIR/pr -u $DYNO_UUID > $RLOGR
 	
 	# TODO presmerovavat  2>&1 kdyz neni rendezvous
 	
@@ -128,12 +130,12 @@ run_container()
 		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 
 	    # # | $RLOGR -t -s $LOG_CHANNEL -a 
 	else
-#		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 2>&1 | ./pr -u $LOG_UUID > $RLOGR
-		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 2>&1 | ./pr -u $LOG_UUID > $RLOGR
-		lxc-execute -s lxc.console=none -n $LXC_NAME  -- env 2>&1 | ./pr -u $LOG_UUID > $RLOGR
+#		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
+		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
+		lxc-execute -s lxc.console=none -n $LXC_NAME  -- env 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
 	fi
 	EXITCODE=$?
-	echo "Stopped container $LXC_NAME for $LOG_APP" | ./pr -u $DYNO_UUID > $RLOGR
+	echo "Stopped container $LXC_NAME for $LOG_APP" | $DIR/pr -u $DYNO_UUID > $RLOGR
 	
 }
 
