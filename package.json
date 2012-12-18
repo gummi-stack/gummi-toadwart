@@ -16,6 +16,7 @@
 	"request": "*",
 	"filesize": "*",
 	"libyaml": "*",
+	"coffee-script": "*",
 	"coffee-trace": "*",
 	"netmask": "*"
   },
