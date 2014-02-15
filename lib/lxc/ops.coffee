@@ -32,6 +32,7 @@ module.exports = (app, dhcp, storage) ->
 
 	###
 	app.post '/ps/start', (req, res, next) ->
+		console.log req.body
 		slug = req.body.slug
 		cmd = req.body.cmd
 		env = req.body.env
@@ -166,6 +167,7 @@ module.exports = (app, dhcp, storage) ->
 
 	app.post '/git/build', (req, res) ->
 		p = req.body
+		console.log p
 
 		fileName = "#{p.repo}-#{p.branch}-#{p.rev}"
 		slugName = "#{fileName}.tgz"
