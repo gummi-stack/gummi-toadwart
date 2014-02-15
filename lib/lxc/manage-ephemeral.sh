@@ -1,9 +1,11 @@
 #!/bin/bash
+set -e
 
-LXC_BASE="child"
+mkdir -p /var/lib/lxc
+
+LXC_BASE_PATH="/srv/gummi/stacks"
+LXC_BASE="gummiglen"
 UNION="overlayfs"
-# RLOGR="/root/toadwart/rlogr/rlogr -h 10.1.69.105 "
-RLOGR="/dev/udp/10.1.69.105/7777"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -11,9 +13,15 @@ if [ "$DYNO_UUID" = "" ]; then
     DYNO_UUID=unknown-manage
 fi
 
+
+if [ -z "$DYNO_UUID" ]; then
+	echo Missing DYNO_UUID
+	exit 1
+fi
+
 on_die()
 {
-	echo "Stopped container $LXC_NAME for $LOG_APP" | $DIR/pr -u $DYNO_UUID > $RLOGR   #$RLOGR  -s $LOG_CHANNEL -a dyno
+	echo "Stopped container $LXC_NAME for $LOG_APP" #| $DIR/pr -u $DYNO_UUID > $RLOGR   #$RLOGR  -s $LOG_CHANNEL -a dyno
 
     # Need to exit the script explicitly when done.
     # Otherwise the script would live on, until system
@@ -26,29 +34,29 @@ trap 'on_die' TERM
 
 setup_variables()
 {
-	OVERLAY_DIR="/tmp/$LXC_NAME"
+	OVERLAY_DIR="/tmp/lxc-$LXC_NAME"
 	LXC_DIR="/var/lib/lxc/$LXC_NAME"
 	EPHEMERAL_BIND_DIR=$LXC_DIR/ephemeralbind
-	
+
 }
 
 
 setup_container()
 {
 	# echo "Setting up ephemeral container"
-	LXC_DIR=`sudo mkdir /var/lib/lxc/$LXC_NAME`
+	LXC_DIR=`sudo mkdir -p /var/lib/lxc/$LXC_NAME`
 	# LXC_NAME=`basename $LXC_DIR`
 
 	# LXC_DIR=`sudo mktemp -d --tmpdir=/var/lib/lxc $LXC_BASE-temp-XXXXXXX`
 	# LXC_NAME=`basename $LXC_DIR`
-	
+
 	setup_variables
-	
-	
+
+
 	mkdir $OVERLAY_DIR
-	
+
 	sudo mount -t tmpfs none $OVERLAY_DIR
-	do_mount "/var/lib/lxc/$LXC_BASE" "${OVERLAY_DIR}" $LXC_DIR
+	do_mount "$LXC_BASE_PATH/$LXC_BASE" "${OVERLAY_DIR}" $LXC_DIR
 	sudo mkdir $EPHEMERAL_BIND_DIR
 	sudo mount -t tmpfs none $EPHEMERAL_BIND_DIR
 
@@ -59,7 +67,7 @@ setup_container()
 	#sudo cp $LXC_DIR/fstab $LXC_DIR/fstab.old
 	#cat $LXC_DIR/fstab
 	update_config
-	
+
 	echo $LXC_NAME
 }
 
@@ -72,11 +80,15 @@ update_config() {
     (
     while read line; do
 	if [ "${line:0:18}" = "lxc.network.hwaddr" ]; then
-	    echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
+		echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
 	elif [ "${line:0:21}" = "lxc.network.veth.pair" ]; then
-	    echo "lxc.network.veth.pair = $LXC_NAME" #| sed "s/child-temp-//"
+		echo "lxc.network.veth.pair = $LXC_NAME" #| sed "s/child-temp-//"
+	elif [ "${line:0:10}" = "lxc.rootfs" ]; then
+		echo "lxc.rootfs = $LXC_BASE_PATH/$LXC_BASE/rootfs"
+	elif [ "${line:0:9}" = "lxc.mount" ]; then
+		echo "lxc.mount = $LXC_BASE_PATH/$LXC_BASE/fstab"
 	else
-	    echo "$line"
+		echo "$line"
 	fi
     done
     ) < ${c}.old | sudo tee ${c} >/dev/null
@@ -85,7 +97,7 @@ update_config() {
     echo LXC_IP=$LXC_IP >> $cfg
     echo LXC_MASK=$LXC_MASK >> $cfg
     echo LXC_ROUTE=$LXC_ROUTE >> $cfg
-	
+
 	## TODO zvazit i jine varianty
 	cp /etc/resolv.conf $LXC_DIR/rootfs/etc/resolv.conf
 }
@@ -103,8 +115,8 @@ do_mount() {
 
 clean_container()
 {
-	
-	echo "Stopping lxc $LXC_NAME" 
+
+	echo "Stopping lxc $LXC_NAME"
 	LXC_NAME=$1
 	setup_variables
 
@@ -119,24 +131,24 @@ clean_container()
 
 run_container()
 {
-	# echo $CMD
-	echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD" | $DIR/pr -u $DYNO_UUID > $RLOGR
-	
+	echo $CMD
+	echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD"  ######| $DIR/pr -u $DYNO_UUID > $RLOGR
+
 	# TODO presmerovavat  2>&1 kdyz neni rendezvous
-	
-	
+
+
 	if [ "$LXC_RENDEZVOUS" = 1 ]; then
-#		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " # | $RLOGR -t -s $LOG_CHANNEL -a 
-		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 
-	    # # | $RLOGR -t -s $LOG_CHANNEL -a 
+#		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " # | $RLOGR -t -s $LOG_CHANNEL -a
+		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+	    # # | $RLOGR -t -s $LOG_CHANNEL -a
 	else
 #		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
-		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
-		lxc-execute -s lxc.console=none -n $LXC_NAME  -- env 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
+		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
+		lxc-execute -s lxc.console=none -n $LXC_NAME  -- env ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
 	fi
 	EXITCODE=$?
-	echo "Stopped container $LXC_NAME for $LOG_APP" | $DIR/pr -u $DYNO_UUID > $RLOGR
-	
+	echo "Stopped container $LXC_NAME for $LOG_APP" #@@@@@| $DIR/pr -u $DYNO_UUID > $RLOGR
+
 }
 
 
@@ -145,6 +157,7 @@ action=$1
 if [ "$action" = "setup" ]; then
 	LXC_NAME=$2
 	setup_container
+	exit 0
 
 elif [ "$action" = "run" ]; then
 
@@ -162,7 +175,7 @@ elif [ "$action" = "run" ]; then
 	fi
 	run_container
 	exit $EXITCODE
-	
+
 elif [ "$action" = "clean" ]; then
 	clean_container $2
 
