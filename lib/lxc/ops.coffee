@@ -18,7 +18,9 @@ psmanager.on 'remove', (info) ->
 psmanager.run()
 
 module.exports = (app, dhcp, storage) ->
-
+	app.use (req, res, next)->
+		console.log "#{req.method} #{req.path}"
+		next()
 	###
 	Start process from slug in new container
 
