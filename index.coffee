@@ -1,4 +1,6 @@
-config = require('cson-config').load()
+(require 'cson-config').load()
+process.config.name = require('os').hostname()
+config = process.config
 
 express = require 'express'
 util = require 'util'
