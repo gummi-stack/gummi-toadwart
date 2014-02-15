@@ -1,4 +1,10 @@
-(require 'cson-config').load()
+fs = require 'fs'
+config = "/etc/toadward/config.cson"
+
+config = "./config.cson" unless fs.existsSync(config)
+
+(require 'cson-config').load(config)
+
 process.config.name = require('os').hostname()
 config = process.config
 
