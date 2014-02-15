@@ -29,7 +29,7 @@ module.exports = (app, dhcp, storage) ->
 	:logName - log name
 
 	###
-	app.post '/ps/start', (req, res) ->
+	app.post '/ps/start', (req, res, next) ->
 		slug = req.body.slug
 		cmd = req.body.cmd
 		env = req.body.env
@@ -58,9 +58,14 @@ module.exports = (app, dhcp, storage) ->
 			# 	util.print 'EXIT: ' + code
 
 		lease = dhcp.get()
-		lxc.setup lease, hostname, (name) ->
+		lxc.setup lease, hostname, (err, name) ->
+
+			return next err if err
+
 			approot = "#{lxc.root}app"
-			fs.mkdirSync approot
+			try
+				fs.mkdirSync approot # todo vazne ignorovat?
+			catch err
 
 			# file = req.query.slug
 			# env = JSON.parse req.query.env
@@ -143,7 +148,7 @@ module.exports = (app, dhcp, storage) ->
 		res.json
 			name: config.name
 			id: config.id
-			ip: config.ip
+			# ip: config.ip
 			port: config.port
 			containersCount: psmanager.getCount()
 			motd: 'You bitch'
@@ -190,11 +195,18 @@ module.exports = (app, dhcp, storage) ->
 				res.write data
 
 
-			lxc.setup dhcp.get(), hostname, (name)->
+			lxc.setup dhcp.get(), hostname, (err, name)->
+				return next err if err
+
 				approot = "#{lxc.root}app"
-				fs.mkdirSync approot
+				try
+					fs.mkdirSync approot  #todo asi by se to melo hlidat
+				catch err
+
 				cachedir = "#{lxc.root}tmp/buildpack-cache"
-				fs.mkdirSync cachedir
+				try
+					fs.mkdirSync cachedir
+				catch err
 
 				storage.getSlug cacheName, (err, tmp1) ->
 					exec "tar -C #{cachedir}/ -xzf #{tmp1}", (error, stdout, stderr) ->

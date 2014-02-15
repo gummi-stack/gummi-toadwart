@@ -19,6 +19,13 @@ network.init (err, dhcp) ->
 	app = express()
 	app.use express.json()
 	app.use express.urlencoded()
+	app.use (req, res, next) ->
+		req.headers['content-type'] = "application/json; charset=utf-8"
+		req.headers['accept'] = "application/json"
+		req.headers.accept = "application/json"
+		next()
+
+
 	app.use app.router
 	app.use express.errorHandler()
 
