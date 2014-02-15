@@ -1,5 +1,5 @@
 fs 		= require 'fs'
-{exec}	= require 'child_process'
+exec	= require('child_process').exec
 util	= require 'util'
 uuid	= require 'node-uuid'
 colors	= require 'colors'

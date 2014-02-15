@@ -11,15 +11,15 @@
     "toadwart": "./bin/toadwart"
   },
   "dependencies": {
-    "express": "*",
-    "async": "*",
-    "pty.js": "*",
-    "procfile": "*",
-    "node-uuid": "*",
-    "colors": "*",
-    "request": "*",
-    "filesize": "*",
-    "netmask": "*",
+    "express": "~3.4.8",
+    "async": "~0.2.10",
+    "pty.js": "~0.2.3",
+    "procfile": "~0.1.1",
+    "node-uuid": "~1.4.1",
+    "colors": "~0.6.2",
+    "request": "~2.33.0",
+    "filesize": "~2.0.0",
+    "netmask": "~1.0.4",
     "cson-config": "~0.1.7"
   },
   "engines": {

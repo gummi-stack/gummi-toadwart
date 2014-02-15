@@ -10,15 +10,17 @@ class Lxc extends EventEmitter
 	constructor: ( @name ) ->
 
 	setup: (lan, name, cb) =>
-		util.log util.inspect process.env.PATH 
-		
+		env =
+			LXC_IP: lan.ip
+			LXC_MASK: lan.mask
+			LXC_ROUTE: lan.route
+
 		# process.env.PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games"
-		exec "LXC_IP=#{lan.ip} LXC_MASK=#{lan.mask} LXC_ROUTE=#{lan.route} #{manager} setup #{name}", (err, stdout, stderr) =>
+		exec "#{manager} setup #{name}", env: env (err, stdout, stderr) =>
 			@name = name
 			@name = @name.replace "\n", ""
 			@root = "/var/lib/lxc/#{@name}/rootfs/"
-			# console.log @root
-			
+
 			util.log stdout
 			util.log stderr
 			
@@ -69,8 +71,7 @@ class Lxc extends EventEmitter
 			
 		@process = child
 
-	dispose: (cb) =>
-		exec "#{manager} clean #{@name}", (err, stdout, stderr) =>
-			cb?()
+	dispose: (cb = ->) =>
+		exec "#{manager} clean #{@name}", cb
 		
 module.exports = Lxc
