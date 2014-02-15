@@ -1,11 +1,8 @@
-express = require 'express'
 util = require 'util'
-fs = require 'fs'
-net = require 'net'
 EventEmitter = require('events').EventEmitter
 {spawn, fork, exec} = require('child_process')
 
-manager = __dirname + "/../manage-ephemeral.sh"
+manager = __dirname + "/manage-ephemeral.sh"
 
 ## TODO sanitize command && ; " etc...  just path
 

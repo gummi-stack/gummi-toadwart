@@ -1,6 +1,12 @@
 gummi-toadwart
 ==============
 
+## build
+
+git clone git@git.ccl:devops/jenkins.git .buildpack
+.buildpack/bin/detect
+
+## old readme
 
 npm install coffee-script -g
 

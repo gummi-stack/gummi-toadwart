@@ -4,7 +4,7 @@ net = require 'net'
 command = process.argv[2]
 name = process.argv[3]
 
-manager = __dirname + "/../manage-ephemeral.sh"
+manager = __dirname + "/manage-ephemeral.sh"
 pid = 0
 
 pty = require 'pty.js'

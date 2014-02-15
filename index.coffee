@@ -6,44 +6,27 @@ net 			= require 'net'
 procfile		= require 'procfile'
 request			= require 'request'
 filesize		= require 'filesize'
-uuid			= require 'node-uuid'
-# config			= require './config'
+nm				= require 'netmask'
 Dhcp			= require './lib/dhcp.coffee'
 Lxc 			= require './lib/lxc'
 PsManager		= require './lib/psmanager'
-yaml			= require 'libyaml'
 storage			= require './lib/storage/'
-iptables		= require './lib/iptables'
-require 'coffee-trace'
+
 fn = util.inspect
 util.inspect = (a,b,c) -> fn a,b,c,yes
 
-config = {}
+config = require('cson-config').load()
 
-bootstrap = (done) ->
-	util.log "PATH:" + process.env.PATH
-	configManager = require './lib/configManager'
+app = express()
+app.use express.bodyParser()
+app.use app.router
+app.use express.errorHandler()
 
-	config = configManager.manage
-		path: '/etc/toadwart.yaml'
-		required: ['name', 'ip', 'port', 'id', 'lxc.iface', 'lxc.address', 'lxc.userResolv', 'wan.iface']
-		defaults:
-			id: uuid.v4()
-			lxc:
-				userResolv: yes
+util.log "PATH:" + process.env.PATH
 
-	
-	exec 'mknod /dev/udp c 30 32', ->
-		# todo checkovat zda se povedlo vytvorit
-		
-		util.inspect fs.statSync '/dev/udp'
-		
-		done()
-		
-
-	
-	
-bootstrap () ->	
+exec 'mknod /dev/udp c 30 32', ->
+	# todo checkovat zda se povedlo vytvorit
+	util.inspect fs.statSync '/dev/udp'
 
 	psmanager = new PsManager config
 
@@ -56,8 +39,7 @@ bootstrap () ->
 	psmanager.run()
 
 	
-	nm = require('netmask')
-	Netmask = require('netmask').Netmask
+	Netmask = nm.Netmask
 	net = new Netmask config.lxc.address
 
 
@@ -84,7 +66,7 @@ bootstrap () ->
 		LXC_MASK: net.mask
 		
 			
-	exec "#{__dirname}/iptables.sh", env: ipenv, (err, stdout, stderr) ->
+	exec "#{__dirname}/lib/iptables.sh", env: ipenv, (err, stdout, stderr) ->
 		console.log err if err
 		console.log stdout if stdout
 		console.log stderr if stderr
@@ -97,14 +79,6 @@ bootstrap () ->
 			
 
 		dhcp = new Dhcp dhcpConfig 
-
-		app = express()
-		app.use express.bodyParser()
-
-		expressSwaggerDoc = require 'express-swagger-doc'
-		app.use expressSwaggerDoc(__filename, '/docs')
-		app.use app.router
-		app.use express.errorHandler()
 
 	
 
@@ -343,12 +317,13 @@ bootstrap () ->
 
 									lxc.exec '/init/buildpack release', env, (exitCode2) ->
 										# res.write yamlBuffer.yellow
-							
-										releaseData = yaml.parse yamlBuffer
-										releaseData = releaseData[0] if releaseData
-										res.write util.inspect releaseData
+
+										# TODO
+#										releaseData = yaml.parse yamlBuffer
+#										releaseData = releaseData[0] if releaseData
+										res.write util.inspect yamlBuffer
 										res.write "\n"
-										buildData.releaseData = releaseData
+#										buildData.releaseData = releaseData
 														
 							
 										# zabalim slug do tempu

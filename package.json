@@ -1,24 +1,38 @@
 {
   "name": "toadwart",
   "version": "0.9.0",
+  "description": "gummi-toadwart ==============",
+  "author": "",
   "main": "index.coffee",
+  "scripts": {
+    "test": "echo \"Error: no test specified\""
+  },
   "bin": {
-	 "toadwart": "./bin/toadwart"
+    "toadwart": "./bin/toadwart"
   },
   "dependencies": {
     "express": "*",
     "async": "*",
-	"pty.js": "*",
-	"procfile": "*",
-	"node-uuid": "*",
-	"express-swagger-doc": "https://github.com/falsecz/express-swagger-doc/tarball/master",
-	"colors": "*",
-	"request": "*",
-	"filesize": "*",
-	"libyaml": "*",
-	"coffee-script": "*",
-	"coffee-trace": "*",
-	"netmask": "*"
+    "pty.js": "*",
+    "procfile": "*",
+    "node-uuid": "*",
+    "colors": "*",
+    "request": "*",
+    "filesize": "*",
+    "netmask": "*",
+    "cson-config": "~0.1.7"
   },
-  "license": "BSD"
+  "engines": {
+    "node": "0.10.25",
+    "coffee-script": "1.7.1"
+  },
+  "license": "BSD",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/gummi-stack/gummi-toadwart.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gummi-stack/gummi-toadwart/issues"
+  },
+  "homepage": "https://github.com/gummi-stack/gummi-toadwart"
 }
