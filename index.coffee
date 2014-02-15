@@ -1,5 +1,5 @@
 fs = require 'fs'
-config = "/etc/toadward/config.cson"
+config = "/etc/toadwart/config.cson"
 
 config = "./config.cson" unless fs.existsSync(config)
 
@@ -40,5 +40,5 @@ network.init (err, dhcp) ->
 	lxc app, dhcp, storage
 
 	app.listen config.port
-	util.log "Toadwart \"#{config.name}\" serving on #{config.port}".green
+	util.log "Toadwart \"#{config.name}\" id: \"#{config.id}\" serving on #{config.port}".green
 
