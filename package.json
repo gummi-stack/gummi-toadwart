@@ -20,7 +20,8 @@
     "request": "~2.33.0",
     "filesize": "~2.0.0",
     "netmask": "~1.0.4",
-    "cson-config": "~0.1.7"
+    "cson-config": "~0.1.7",
+    "tar": "~0.1.19"
   },
   "engines": {
     "node": "0.10.25",

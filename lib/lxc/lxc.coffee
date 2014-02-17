@@ -14,7 +14,7 @@ class Lxc extends EventEmitter
 			LXC_IP: lan.ip
 			LXC_MASK: lan.mask
 			LXC_ROUTE: lan.route
-
+		@baseEnv = env
 		# process.env.PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games"
 		exec "#{manager} setup #{name}", env: env, (err, stdout, stderr) =>
 			return cb err if err
@@ -34,6 +34,10 @@ class Lxc extends EventEmitter
 		env.PATH = process.env.PATH
 		# util.log '-ev-ev-e-ve-ve-'
 		# util.log util.inspect env
+
+		for key, val of @baseEnv
+			env[key] = val
+
 		p = spawn 'setsid', [manager, 'run', @name, '--', command], {env: env}
 #		logr = spawn '/root/rlogr/rlogr', ['-t', '-s test2']
 

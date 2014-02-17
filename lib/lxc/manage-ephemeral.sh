@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# env
+
+
 mkdir -p /var/lib/lxc
 
 LXC_BASE_PATH="/srv/gummi/stacks"
@@ -84,9 +87,9 @@ update_config() {
 	elif [ "${line:0:21}" = "lxc.network.veth.pair" ]; then
 		echo "lxc.network.veth.pair = $LXC_NAME" #| sed "s/child-temp-//"
 	elif [ "${line:0:10}" = "lxc.rootfs" ]; then
-		echo "lxc.rootfs = $LXC_BASE_PATH/$LXC_BASE/rootfs"
+		echo "lxc.rootfs = $LXC_DIR/rootfs"
 	elif [ "${line:0:9}" = "lxc.mount" ]; then
-		echo "lxc.mount = $LXC_BASE_PATH/$LXC_BASE/fstab"
+		echo "lxc.mount = $LXC_DIR/fstab"
 	else
 		echo "$line"
 	fi
@@ -98,6 +101,7 @@ update_config() {
     echo LXC_MASK=$LXC_MASK >> $cfg
     echo LXC_ROUTE=$LXC_ROUTE >> $cfg
 
+	# cat $c
 	## TODO zvazit i jine varianty
 	cp /etc/resolv.conf $LXC_DIR/rootfs/etc/resolv.conf
 }
@@ -110,6 +114,7 @@ do_mount() {
        sudo mount -t aufs -o br=${upper}=rw:${lower}=ro,noplink none ${target}
    else
        sudo mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} none ${target}
+       echo sudo mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} none ${target}
    fi
 }
 
@@ -131,8 +136,16 @@ clean_container()
 
 run_container()
 {
+
+
 	echo $CMD
-	echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD"  ######| $DIR/pr -u $DYNO_UUID > $RLOGR
+	# echo asdasda asd | logger -t GUMMI
+	# echo gummi-prefixer GUMMI $REPO dyno.1 echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD"
+	# gummi-prefixer GUMMI $REPO dyno.1 ls -la
+	# gummi-prefixer GUMMI $REPO dyno.1
+	echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD" | sed -e "s/^/`echo $(REPO)` dyno\.1 1 /" | logger -t GUMMI
+
+	# #####| $DIR/pr -u $DYNO_UUID > $RLOGR
 
 	# TODO presmerovavat  2>&1 kdyz neni rendezvous
 
@@ -147,7 +160,7 @@ run_container()
 		lxc-execute -s lxc.console=none -n $LXC_NAME  -- env ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
 	fi
 	EXITCODE=$?
-	echo "Stopped container $LXC_NAME for $LOG_APP" #@@@@@| $DIR/pr -u $DYNO_UUID > $RLOGR
+	echo "Stopped container $LXC_NAME for $LOG_APP" | sed -e "s/^/`echo $(REPO)` dyno\.1 1 /" | logger -t GUMMI #@@@@@| $DIR/pr -u $DYNO_UUID > $RLOGR
 
 }
 

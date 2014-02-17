@@ -165,9 +165,13 @@ module.exports = (app, dhcp, storage) ->
 			res.end stdout
 
 
-	app.post '/git/build', (req, res) ->
-		p = req.body
-		console.log p
+	app.post '/git/build', (req, res, next) ->
+		data = try JSON.parse req.headers['x-data']
+		return next "Invalid x-data" unless data
+
+
+		p = data
+
 
 		fileName = "#{p.repo}-#{p.branch}-#{p.rev}"
 		slugName = "#{fileName}.tgz"
@@ -177,131 +181,177 @@ module.exports = (app, dhcp, storage) ->
 		callbackUrl = p.callbackUrl
 
 
-		storage.getGitArchive "#{fileName}.tar.gz", (err, archive) ->
-			return util.log util.inspect err if err
+		# storage.getGitArchive "#{fileName}.tar.gz", (err, archive) ->
+	# 		return util.log util.inspect err if err
 
 
-			util.log "Building #{p.repo} #{p.branch} #{p.rev}".green
+		util.log "Building #{p.repo} #{p.branch} #{p.rev}".green
 
-			lxc = new Lxc
+		lxc = new Lxc
 
-			exit = (exitCode) ->
-				exitCode = 1 unless exitCode?
-				lxc.dispose ->
-					util.log "Done #{p.repo} #{p.branch} #{p.rev} with code #{exitCode}".yellow
-					res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
-
-
-			lxc.on 'data', (data) ->
-				res.write data
-
-			lxc.on 'error', (data) ->
-				res.write data
+		exit = (exitCode) ->
+			exitCode = 1 unless exitCode?
+			lxc.dispose ->
+				util.log "Done #{p.repo} #{p.branch} #{p.rev} with code #{exitCode}".yellow
+				res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
 
 
-			lxc.setup dhcp.get(), hostname, (err, name)->
-				return next err if err
+		lxc.on 'data', (data) ->
+			res.write data
 
-				approot = "#{lxc.root}app"
+		lxc.on 'error', (data) ->
+			res.write data
+
+
+		req.pause()
+
+		lxc.setup dhcp.get(), hostname, (err, name)->
+
+
+
+			return next err if err
+			console.log 'lx test
+			'
+			approot = "#{lxc.root}app"
+			try
+				fs.mkdirSync approot  #todo asi by se to melo hlidat
+			catch err
+
+			cachedir = "#{lxc.root}tmp/buildpack-cache"
+			try
+				fs.mkdirSync cachedir
+			catch err
+
+			#mam adresar
+			console.log approot
+
+
+
+
+					#
+			# req.on 'data', (d) ->
+			# 	console.log d
+			# req.on 'error', (err) ->
+			# 	return next err
+			# req.on 'end', () ->
+			# 	res.json 'xx'
+			zlib = require 'zlib'
+			tar = require 'tar'
+			gzip = zlib.createGunzip()
+
+			req.resume()
+
+			# xx = req.pipe(gzip).pipe process.stdout #.pipe(tar.Extract(approot))
+			# xx = req.pipe(gzip) #.pipe(tar.Extract(approot))
+			fs = require 'fs'
+			# gzip = fs.createWriteStream '/tmp/aaa.tar.gz'
+
+			tarx = tar.Extract(approot)
+			xx = req.pipe(gzip).pipe(tarx)
+
+
+			gzip.on 'error', (err) ->
+				return next err
+			tarx.on 'error', (err) ->
+				return next err
+
+			tarx.on 'end', () ->
+				#
+				# storage.getSlug cacheName, (err, tmp1) ->
+				# 	exec "tar -C #{cachedir}/ -xzf #{tmp1}", (error, stdout, stderr) ->
+				#
+				# 		# Rozbalim zdrojaky z gitu do /app
+				# 		exec "tar -C #{approot}/ -xzf #{archive}", (error, stdout, stderr) ->
+				# 			# TODO unlink archive
+				# 			files = fs.readdirSync approot
+				#
+				#
 				try
-					fs.mkdirSync approot  #todo asi by se to melo hlidat
-				catch err
+					procData = fs.readFileSync("#{approot}/Procfile").toString()
+					procData = procfile.parse procData
 
-				cachedir = "#{lxc.root}tmp/buildpack-cache"
-				try
-					fs.mkdirSync cachedir
-				catch err
-
-				storage.getSlug cacheName, (err, tmp1) ->
-					exec "tar -C #{cachedir}/ -xzf #{tmp1}", (error, stdout, stderr) ->
-
-						# Rozbalim zdrojaky z gitu do /app
-						exec "tar -C #{approot}/ -xzf #{archive}", (error, stdout, stderr) ->
-							# TODO unlink archive
-							files = fs.readdirSync approot
+				catch e
+					res.write "ERR: Missing procfile\n"
+					return exit 1
 
 
-							try
-								procData = fs.readFileSync("#{approot}/Procfile").toString()
-								procData = procfile.parse procData
+				buildData =
+					app: p.repo
+					branch: p.branch
+					rev: p.rev
+					timestamp: new Date
+					slug: slugName
+					# procfile: procData
 
-							catch e
-								res.write "ERR: Missing procfile\n"
-								return exit 1
+				env = {}
+				env.LOG_CHANNEL = 'TODOkanalek'
+				env.LOG_APP = 'TODOappka'
+				env.LXC_RENDEZVOUS = 1
+				env.TERM = 'xterm'
+				env.REPO = p.repo
+				env.BRANCH = p.branch
+				env.REV = p.rev
 
+				# pustim buildpack
+				lxc.exec '/init/buildpack', env, (exitCode) ->
+					lxc.removeAllListeners()
+					return exit exitCode unless exitCode is 0
 
-							buildData =
-								app: p.repo
-								branch: p.branch
-								rev: p.rev
-								timestamp: new Date
-								slug: slugName
-								procfile: procData
+					# res.write "---BP: #{exitCode}\n\n"
+					# lxc.exec '/buildpacks/startup /app ', env, (exitCode) ->
 
-							env = {}
-							env.LOG_CHANNEL = 'TODOkanalek'
-							env.LOG_APP = 'TODOappka'
-							env.LXC_RENDEZVOUS = 1
-							env.TERM = 'xterm'
-							# pustim buildpack
-							lxc.exec '/init/buildpack', env, (exitCode) ->
-								lxc.removeAllListeners()
-								return exit exitCode unless exitCode is 0
+					# stop output
+					yamlBuffer = ""
+					lxc.on 'data', (data) ->
+						yamlBuffer += data
 
-								# res.write "---BP: #{exitCode}\n\n"
-								# lxc.exec '/buildpacks/startup /app ', env, (exitCode) ->
+					lxc.on 'err', (data) ->
+						yamlBuffer += data
 
-								# stop output
-								yamlBuffer = ""
-								lxc.on 'data', (data) ->
-									yamlBuffer += data
+					lxc.exec '/init/buildpack release', env, (exitCode2) ->
+						# res.write yamlBuffer.yellow
 
-								lxc.on 'err', (data) ->
-									yamlBuffer += data
-
-								lxc.exec '/init/buildpack release', env, (exitCode2) ->
-									# res.write yamlBuffer.yellow
-
-									# TODO
-#										releaseData = yaml.parse yamlBuffer
-#										releaseData = releaseData[0] if releaseData
-									res.write util.inspect yamlBuffer
-									res.write "\n"
-									#										buildData.releaseData = releaseData
+						# TODO
+	#										releaseData = yaml.parse yamlBuffer
+	#										releaseData = releaseData[0] if releaseData
+						res.write util.inspect yamlBuffer
+						res.write "\n"
+						#										buildData.releaseData = releaseData
 
 
-									# zabalim slug do tempu
-									# todo smazat slug
-									slugTemp = "/tmp/#{fileName}.tar.gz"
-									exec "tar -Pczf #{slugTemp} -C #{approot} .", (error, stdout, stderr) ->
-										storage.putSlug slugTemp, slugName, (err) ->
-											util.log util.inspect err if err
+						# zabalim slug do tempu
+						# todo smazat slug
+						slugTemp = "/tmp/#{fileName}.tar.gz"
+						exec "tar -Pczf #{slugTemp} -C #{approot} .", (error, stdout, stderr) ->
+							storage.putSlug slugTemp, slugName, (err) ->
+								util.log util.inspect err if err
 
 
-											cacheTemp = "/tmp/#{fileName}-cache.tar.gz"
-											exec "tar -Pczf #{cacheTemp} -C #{cachedir} .", (error, stdout, stderr) ->
-												storage.putSlug cacheTemp, cacheName, (err) ->
-													util.log util.inspect err if err
+								cacheTemp = "/tmp/#{fileName}-cache.tar.gz"
+								exec "tar -Pczf #{cacheTemp} -C #{cachedir} .", (error, stdout, stderr) ->
+									# storage.putSlug cacheTemp, cacheName, (err) ->
+									# 	util.log util.inspect err if err
 
 
-													stat = fs.statSync slugTemp
-													buildData.slugSize = stat.size
+									stat = fs.statSync slugTemp
+									buildData.slugSize = stat.size
 
-													fs.unlink slugTemp, () ->
-													fs.unlink cacheTemp, () ->
+									fs.unlink slugTemp, () ->
+									fs.unlink cacheTemp, () ->
 
-													procTypes = []
-													procTypes.push key for key, val of procData
-													res.write "> Procfile declares types -> #{procTypes.join ' '}\n"
-													res.write "> Compiled slug size: #{filesize(buildData.slugSize)}\n"
+									console.log buildData
+									procTypes = []
+									procTypes.push key for key, val of procData
+									res.write "> Procfile declares types -> #{procTypes.join ' '}\n"
+									res.write "> Compiled slug size: #{filesize(buildData.slugSize)}\n"
 
-													request {uri: callbackUrl, method: 'POST', json: buildData}, (err, response, body) ->
-														throw err if err
-														if body?.status isnt 'ok'
-															res.write "ERR: Couldn't save build on api\n"
-															res.write util.inspect body
-															res.write "\n"
-															return exit 1
+									request {uri: callbackUrl, method: 'POST', json: buildData}, (err, response, body) ->
+										throw err if err
+										if body?.status isnt 'ok'
+											res.write "ERR: Couldn't save build on api\n"
+											res.write util.inspect body
+											res.write "\n"
+											return exit 1
 
-														res.write "> Build stored: v#{body.version}\n"
-														exit exitCode
+										res.write "> Build stored: v#{body.version}\n"
+										exit exitCode
