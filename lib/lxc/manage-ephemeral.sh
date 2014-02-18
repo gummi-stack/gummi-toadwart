@@ -133,17 +133,23 @@ clean_container()
 	sudo rmdir $OVERLAY_DIR
 }
 
+log () {
+	echo $@ | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
+}
 
 run_container()
 {
-
-
-	echo $CMD
+	# env
+	# echo '////////////////////////////////////////>>>>>>>>>>>'
+	# echo $CMD
 	# echo asdasda asd | logger -t GUMMI
-	# echo gummi-prefixer GUMMI $REPO dyno.1 echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD"
+	# echo gummi-prefixer GUMMI gummi $REPO dyno.1 echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD"
+	log "Starting container $LXC_NAME for $REPO: $CMD"
+	# echo "Starting container $LXC_NAME for $REPO: $CMD" | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
+
 	# gummi-prefixer GUMMI $REPO dyno.1 ls -la
 	# gummi-prefixer GUMMI $REPO dyno.1
-	echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD" | sed -e "s/^/`echo $(REPO)` dyno\.1 1 /" | logger -t GUMMI
+	# echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD" | sed -e "s/^/`echo $(REPO)` dyno\.1 1 /" | logger -t GUMMI
 
 	# #####| $DIR/pr -u $DYNO_UUID > $RLOGR
 
@@ -160,7 +166,8 @@ run_container()
 		lxc-execute -s lxc.console=none -n $LXC_NAME  -- env ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
 	fi
 	EXITCODE=$?
-	echo "Stopped container $LXC_NAME for $LOG_APP" | sed -e "s/^/`echo $(REPO)` dyno\.1 1 /" | logger -t GUMMI #@@@@@| $DIR/pr -u $DYNO_UUID > $RLOGR
+	# echo "Stopped container $LXC_NAME for $LOG_APP" | sed -e "s/^/`echo $(REPO)` dyno\.1 1 /" | logger -t GUMMI
+	log "Stopped container $LXC_NAME for $REPO"
 
 }
 
