@@ -6,7 +6,7 @@ request = require 'request'
 filesize = require 'filesize'
 Lxc = require './lxc'
 PsManager = require './psmanager'
-
+express = require 'express'
 config = process.config
 
 psmanager = new PsManager config
@@ -31,7 +31,7 @@ module.exports = (app, dhcp, storage) ->
 	:logName - log name
 
 	###
-	app.post '/ps/start', (req, res, next) ->
+	app.post '/ps/start', express.json(), (req, res, next) ->
 		console.log req.body
 		slug = req.body.slug
 		cmd = req.body.cmd
@@ -92,42 +92,42 @@ module.exports = (app, dhcp, storage) ->
 				env.LXC_LINES = userEnv.LINES
 				env.LXC_COLUMNS = userEnv.COLUMNS
 
-			storage.getSlug slug, (err, tmp) ->
-				exec "tar -C #{approot}/ -xzf #{tmp}", (error, stdout, stderr) ->
-					util.log util.inspect error if error
-					util.log util.inspect stderr if stderr
+			storage.getSlug slug.Location, approot, (err) ->
+				return next err if err
+				# exec "tar -C #{approot}/ -xzf #{tmp}", (error, stdout, stderr) ->
+				# 	util.log util.inspect error if error
+				# 	util.log util.inspect stderr if stderr
+				#
+				# 	fs.unlink tmp, () ->
+				#
+				#
+				port = 5000
+				env.PORT = port
+				if rendezvous
+					console.log cmd
 
-					fs.unlink tmp, () ->
-
-
-					port = 5000
-					env.PORT = port
-					if rendezvous
-#							lxc.rendezvous '/buildpacks/startup /app run ' + cmd, env, (data) ->
-						console.log cmd
-
-						lxc.rendezvous cmd, env, (data) ->
-							# console.log "::#{port}"
-							pso = psmanager.add data.pid, lxc.name, lease.ip, data.port
-							pso.rendezvousURI = "tcp://#{config.ip}:#{data.port}"
-							res.json pso
-
-
-					else
-						# console.log '----c-c-c-c'
-						util.log util.inspect env
-						#							lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
-						lxc.exec cmd, env, (exitCode) ->
-							lxc.dispose () ->
-						ipInfo = lease.portMap[lease.ip]
-						pso = psmanager.add lxc.process.pid, name, ipInfo.publicIp, ipInfo.publicPort
+					lxc.rendezvous cmd, env, (data) ->
+						# console.log "::#{port}"
+						pso = psmanager.add data.pid, lxc.name, lease.ip, data.port
+						pso.rendezvousURI = "tcp://#{config.ip}:#{data.port}"
 						res.json pso
+
+
+				else
+					# console.log '----c-c-c-c'
+					util.log util.inspect env
+					#							lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
+					lxc.exec cmd, env, (exitCode) ->
+						lxc.dispose () ->
+					ipInfo = lease.portMap[lease.ip]
+					pso = psmanager.add lxc.process.pid, name, ipInfo.publicIp, ipInfo.publicPort
+					res.json pso
 
 
 	###
 	Kill process by pid
 	###
-	app.post '/ps/kill', (req, res) ->
+	app.post '/ps/kill', express.json(),  (req, res) ->
 		# util.log util.inspect req.body
 		try
 			throw new Error 'Invalid pid' unless req.body.pid
@@ -169,6 +169,11 @@ module.exports = (app, dhcp, storage) ->
 		data = try JSON.parse req.headers['x-data']
 		return next "Invalid x-data" unless data
 
+		write = (message) ->
+
+			m = JSON.stringify(msg: message.toString()) + "\n"
+			res.write m
+
 
 		p = data
 
@@ -193,14 +198,14 @@ module.exports = (app, dhcp, storage) ->
 			exitCode = 1 unless exitCode?
 			lxc.dispose ->
 				util.log "Done #{p.repo} #{p.branch} #{p.rev} with code #{exitCode}".yellow
-				res.end("94ed473f82c3d1791899c7a732fc8fd0_exit_#{exitCode}\n")
+				res.end JSON.stringify exitCode: exitCode
 
 
 		lxc.on 'data', (data) ->
-			res.write data
+			write data
 
 		lxc.on 'error', (data) ->
-			res.write data
+			write data
 
 
 		req.pause()
@@ -271,7 +276,7 @@ module.exports = (app, dhcp, storage) ->
 					procData = procfile.parse procData
 
 				catch e
-					res.write "ERR: Missing procfile\n"
+					write "ERR: Missing procfile\n"
 					return exit 1
 
 
@@ -301,57 +306,65 @@ module.exports = (app, dhcp, storage) ->
 					# lxc.exec '/buildpacks/startup /app ', env, (exitCode) ->
 
 					# stop output
-					yamlBuffer = ""
-					lxc.on 'data', (data) ->
-						yamlBuffer += data
+					# yamlBuffer = ""
+					# lxc.on 'data', (data) ->
+					# 	yamlBuffer += data
+					#
+					# lxc.on 'err', (data) ->
+					# 	yamlBuffer += data
 
-					lxc.on 'err', (data) ->
-						yamlBuffer += data
+					# lxc.exec '/init/buildpack release', env, (exitCode2) ->
+					# res.write yamlBuffer.yellow
 
-					lxc.exec '/init/buildpack release', env, (exitCode2) ->
-						# res.write yamlBuffer.yellow
-
-						# TODO
-	#										releaseData = yaml.parse yamlBuffer
-	#										releaseData = releaseData[0] if releaseData
-						res.write util.inspect yamlBuffer
-						res.write "\n"
-						#										buildData.releaseData = releaseData
-
-
-						# zabalim slug do tempu
-						# todo smazat slug
-						slugTemp = "/tmp/#{fileName}.tar.gz"
-						exec "tar -Pczf #{slugTemp} -C #{approot} .", (error, stdout, stderr) ->
-							storage.putSlug slugTemp, slugName, (err) ->
-								util.log util.inspect err if err
+					# TODO
+#										releaseData = yaml.parse yamlBuffer
+#										releaseData = releaseData[0] if releaseData
+					# res.write util.inspect yamlBuffer
+					# res.write "\n"
+					#										buildData.releaseData = releaseData
 
 
-								cacheTemp = "/tmp/#{fileName}-cache.tar.gz"
-								exec "tar -Pczf #{cacheTemp} -C #{cachedir} .", (error, stdout, stderr) ->
-									# storage.putSlug cacheTemp, cacheName, (err) ->
-									# 	util.log util.inspect err if err
+					# zabalim slug do tempu
+					# todo smazat slug
+					# slugTemp = "/tmp/#{fileName}.tar.gz"
+					# exec "tar -Pczf #{slugTemp} -C #{approot} .", (error, stdout, stderr) ->
+					write "-----> Compressing and publishing slug... \n"
+
+					storage.putSlug approot, slugName, (err, s3info) ->
+
+						util.log util.inspect err if err
+						return next err if err
 
 
-									stat = fs.statSync slugTemp
-									buildData.slugSize = stat.size
+						# cacheTemp = "/tmp/#{fileName}-cache.tar.gz"
+						# exec "tar -Pczf #{cacheTemp} -C #{cachedir} .", (error, stdout, stderr) ->
+							# storage.putSlug cacheTemp, cacheName, (err) ->
+							# 	util.log util.inspect err if err
 
-									fs.unlink slugTemp, () ->
-									fs.unlink cacheTemp, () ->
 
-									console.log buildData
-									procTypes = []
-									procTypes.push key for key, val of procData
-									res.write "> Procfile declares types -> #{procTypes.join ' '}\n"
-									res.write "> Compiled slug size: #{filesize(buildData.slugSize)}\n"
+						# stat = fs.statSync slugTemp
+						# buildData.slugSize = stat.size
 
-									request {uri: callbackUrl, method: 'POST', json: buildData}, (err, response, body) ->
-										throw err if err
-										if body?.status isnt 'ok'
-											res.write "ERR: Couldn't save build on api\n"
-											res.write util.inspect body
-											res.write "\n"
-											return exit 1
+						# fs.unlink slugTemp, () ->
+						# fs.unlink cacheTemp, () ->
+						buildData.slug = s3info
 
-										res.write "> Build stored: v#{body.version}\n"
-										exit exitCode
+						console.log buildData
+						procTypes = []
+						procTypes.push key for key, val of procData
+						write "-----> Procfile declares types -> #{procTypes.join ' '}\n"
+						write "-----> Compiled slug size: #{filesize buildData.slug.size}\n"
+						res.write JSON.stringify(result: buildData) + "\n"
+						res.end()
+
+
+						#
+						# request {uri: callbackUrl, method: 'POST', json: buildData}, (err, response, body) ->
+						# 	throw err if err
+						# 	if body?.status isnt 'ok'
+						# 		write "ERR: Couldn't save build on api\n"
+						# 		write util.inspect body
+						# 		write "\n"
+						# 		return exit 1
+						#
+						# 	exit exitCode
