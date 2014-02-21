@@ -66,8 +66,11 @@ class Lxc extends EventEmitter
 		env.TEMP_PATH = env.PATH
 		env.PATH = process.env.PATH
 
+		for key, val of @baseEnv
+			env[key] = val
+
 		util.log util.inspect env
-		child = fork __dirname + '/lxcserver', [command, @name], {env: env}
+		child = fork __dirname + '/lxcserver.coffee', [command, @name], {env: env}
 		# child.stdout.on 'data', (data) =>
 		# 	util.log '>>>>>>>> ' + data
 

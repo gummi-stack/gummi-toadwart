@@ -109,7 +109,8 @@ module.exports = (app, dhcp, storage) ->
 					lxc.rendezvous cmd, env, (data) ->
 						# console.log "::#{port}"
 						pso = psmanager.add data.pid, lxc.name, lease.ip, data.port
-						pso.rendezvousURI = "tcp://#{config.ip}:#{data.port}"
+						# pso.rendezvousPort = "#{data.port}"
+						# pso.rendezvousURI = "tcp://#{config.ip}:#{data.port}"
 						res.json pso
 
 
