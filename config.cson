@@ -1,0 +1,15 @@
+id: process.env.TOADWART_ID || '1bcc10c6-93a4-4370-8b40-301418c6cdec'
+port: 8000
+
+dhcp:
+	addresses: '192.168.73.2-192.168.73.254'
+	mask: '255.255.255.0'
+	route: '192.168.73.2'
+
+lxc:
+	address: '172.16.1.1/24'
+	iface: 'lxcbr0'
+
+wan:
+	iface: 'eth0'
+
