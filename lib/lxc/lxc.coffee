@@ -25,7 +25,6 @@ class Lxc extends EventEmitter
 
 			console.log 'setup', 'stdout', stdout
 			# console.log 'setup', 'stderr', stderr
-
 			cb null, @name
 
 
@@ -69,7 +68,9 @@ class Lxc extends EventEmitter
 		for key, val of @baseEnv
 			env[key] = val
 
-		util.log util.inspect env
+		# util.log util.inspect env
+		console.log ">>>>>>>>" + command
+
 		child = fork __dirname + '/lxcserver.coffee', [command, @name], {env: env}
 		# child.stdout.on 'data', (data) =>
 		# 	util.log '>>>>>>>> ' + data

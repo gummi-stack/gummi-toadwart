@@ -1,13 +1,14 @@
-exec = require('child_process').exec
 fs   = require 'fs'
-uuid = require 'node-uuid'
 tar  = require 'tar'
 zlib = require 'zlib'
 knox = require 'knox'
 fstream = require 'fstream'
 request = require 'request'
+fscache = require 'fs-cache'
 MultiPartUpload = require 'knox-mpu'
 
+
+cache = fscache '/tmp/toadwart-slugs/'
 
 
 module.exports = (location) ->
@@ -29,41 +30,40 @@ module.exports = (location) ->
 		reader.pipe(tar.Pack())
 			.pipe(gzip)
 
+		console.log 'xxxxx22222'
 		upload = new MultiPartUpload
 			client: client
 			objectName: to
 			stream: gzip
 		, done
 
-	getGitArchive: (name, done) ->
-		get "git/#{name}", "/tmp/#{name}-#{uuid.v4()}", done
-
 	putSlug: (path, name, done) ->
 		put path, "slugs/#{name}", done
 
-	# getSlug: (name, done) ->
-	# 	get "slugs/#{name}", "/tmp/#{name}-#{uuid.v4()}", done
-
 
 	getSlug: (url, dest, done) ->
-		console.log "Downloading #{url} to #{dest}"
+		timeout = 60 * 60 * 24
+		cachedUrlStream = (url) ->
+			if cache.exists url
+				console.log "From cache #{url} to #{dest}"
+				return cache.get(url, expire: timeout)
+
+			console.log "Downloading #{url} to #{dest}"
+			r = request(url)
+			r.pipe cache.put(url, expire: timeout)
+			r
+
+
+
 		gunzip = zlib.Gunzip()
 		untar = tar.Extract
 			path: dest
 			strip: 1
 
-		req = request.get(url)
+		req = cachedUrlStream url
 		req.pipe(gunzip).pipe(untar)
 
 		req.on 'error', (err) ->
 			done err
 		untar.on 'end', () ->
 			done()
-
-		# return done 'storage.get() not implenented yet'
-
-		# cmd = "scp -o StrictHostKeyChecking=no -i #{key} #{location}:#{from} #{to}"
-		# # console.log cmd
-		# exec cmd, (err, stdout, stderr) ->
-		# 	er = err or stderr
-		# 	done er, to

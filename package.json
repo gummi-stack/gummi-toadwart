@@ -25,7 +25,8 @@
     "knox-mpu": "~0.1.6",
     "knox": "~0.8.9",
     "fstream": "~0.1.25",
-    "portfinder": "~0.2.1"
+    "portfinder": "~0.2.1",
+    "fs-cache": "0.0.1"
   },
   "engines": {
     "node": "0.10.25",

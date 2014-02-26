@@ -303,51 +303,14 @@ module.exports = (app, dhcp, storage) ->
 					lxc.removeAllListeners()
 					return exit exitCode unless exitCode is 0
 
-					# res.write "---BP: #{exitCode}\n\n"
-					# lxc.exec '/buildpacks/startup /app ', env, (exitCode) ->
-
-					# stop output
-					# yamlBuffer = ""
-					# lxc.on 'data', (data) ->
-					# 	yamlBuffer += data
-					#
-					# lxc.on 'err', (data) ->
-					# 	yamlBuffer += data
-
-					# lxc.exec '/init/buildpack release', env, (exitCode2) ->
-					# res.write yamlBuffer.yellow
-
-					# TODO
-#										releaseData = yaml.parse yamlBuffer
-#										releaseData = releaseData[0] if releaseData
-					# res.write util.inspect yamlBuffer
-					# res.write "\n"
-					#										buildData.releaseData = releaseData
-
-
-					# zabalim slug do tempu
-					# todo smazat slug
-					# slugTemp = "/tmp/#{fileName}.tar.gz"
-					# exec "tar -Pczf #{slugTemp} -C #{approot} .", (error, stdout, stderr) ->
 					write "-----> Compressing and publishing slug... \n"
 
 					storage.putSlug approot, slugName, (err, s3info) ->
+						if err
+							console.log err
+							res.write JSON.stringify(error: err) + "\n"
+							return next err
 
-						util.log util.inspect err if err
-						return next err if err
-
-
-						# cacheTemp = "/tmp/#{fileName}-cache.tar.gz"
-						# exec "tar -Pczf #{cacheTemp} -C #{cachedir} .", (error, stdout, stderr) ->
-							# storage.putSlug cacheTemp, cacheName, (err) ->
-							# 	util.log util.inspect err if err
-
-
-						# stat = fs.statSync slugTemp
-						# buildData.slugSize = stat.size
-
-						# fs.unlink slugTemp, () ->
-						# fs.unlink cacheTemp, () ->
 						buildData.slug = s3info
 
 						console.log buildData
@@ -355,17 +318,7 @@ module.exports = (app, dhcp, storage) ->
 						procTypes.push key for key, val of procData
 						write "-----> Procfile declares types -> #{procTypes.join ' '}\n"
 						write "-----> Compiled slug size: #{filesize buildData.slug.size}\n"
+						console.log JSON.stringify(result: buildData) + "\n"
 						res.write JSON.stringify(result: buildData) + "\n"
 						res.end()
 
-
-						#
-						# request {uri: callbackUrl, method: 'POST', json: buildData}, (err, response, body) ->
-						# 	throw err if err
-						# 	if body?.status isnt 'ok'
-						# 		write "ERR: Couldn't save build on api\n"
-						# 		write util.inspect body
-						# 		write "\n"
-						# 		return exit 1
-						#
-						# 	exit exitCode

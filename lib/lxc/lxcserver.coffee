@@ -12,13 +12,16 @@ pty = require 'pty.js'
 
 rows = parseInt(process.env.LXC_LINES) || 40
 cols = parseInt(process.env.LXC_COLUMNS) || 80
-console.log 'spsp ' + process.env.PATH
-console.log 'su', ['-c', manager + ' run ' + name + ' -- ' +  command]
+# console.log 'spsp ' + process.env.PATH
+# console.log 'su', ['-c', manager + ' run ' + name + ' -- ' +  command]
 term = pty.spawn 'su', ['-c', manager + ' run ' + name + ' -- ' +  command], {
 	name: 'xterm-color',
 	cols: cols,
 	rows: rows,
+	env: process.env
 }
+
+term.pause()
 
 server = net.createServer (socket) =>
 
@@ -35,6 +38,9 @@ server = net.createServer (socket) =>
 
 	#util.log "Spawn pid " + pid
 	socket.write 'pojd do me <mackni enter> '
+
+	term.resume()
+
 
 	handleTermData = (data) ->
 		socket.write data
