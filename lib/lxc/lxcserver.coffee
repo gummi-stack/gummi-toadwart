@@ -37,7 +37,7 @@ server = net.createServer (socket) =>
 	#pid = term.pid
 
 	#util.log "Spawn pid " + pid
-	socket.write 'pojd do me <mackni enter> '
+	# socket.write 'pojd do me <mackni enter> '
 
 	term.resume()
 

@@ -8,6 +8,7 @@ Lxc = require './lxc'
 PsManager = require './psmanager'
 express = require 'express'
 config = process.config
+cson = require 'cson'
 
 psmanager = new PsManager config
 psmanager.on 'remove', (info) ->
@@ -104,7 +105,7 @@ module.exports = (app, dhcp, storage) ->
 				port = 5000
 				env.PORT = port
 				if rendezvous
-					console.log cmd
+					console.log "EEEEE", cmd, env
 
 					lxc.rendezvous cmd, env, (data) ->
 						# console.log "::#{port}"
@@ -303,22 +304,43 @@ module.exports = (app, dhcp, storage) ->
 					lxc.removeAllListeners()
 					return exit exitCode unless exitCode is 0
 
-					write "-----> Compressing and publishing slug... \n"
+					buffer = ""
+					lxc.on 'data', (data) ->
+						buffer += data
 
-					storage.putSlug approot, slugName, (err, s3info) ->
-						if err
-							console.log err
-							res.write JSON.stringify(error: err) + "\n"
-							return next err
+					lxc.on 'err', (data) ->
+						buffer += data
 
-						buildData.slug = s3info
+					lxc.exec '/init/buildpack release', env, (exitCode) ->
+						console.log "oxoxxoxoxoxoxo"
+						console.log buffer
+						console.log "oxoxxoxoxoxoxo"
+						return exit exitCode unless exitCode is 0
+						cson.parse buffer, (err, releaseInfo) ->
+							if err
+								console.log err
+								return exit 1
+							console.log releaseInfo
 
-						console.log buildData
-						procTypes = []
-						procTypes.push key for key, val of procData
-						write "-----> Procfile declares types -> #{procTypes.join ' '}\n"
-						write "-----> Compiled slug size: #{filesize buildData.slug.size}\n"
-						console.log JSON.stringify(result: buildData) + "\n"
-						res.write JSON.stringify(result: buildData) + "\n"
-						res.end()
+							buildData.releaseData = releaseInfo
+
+							write "-----> Compressing and publishing slug... \n"
+
+							storage.putSlug approot, slugName, (err, s3info) ->
+								if err
+									console.log err
+									res.write JSON.stringify(error: err) + "\n"
+									return next err
+
+
+								buildData.slug = s3info
+
+								console.log buildData
+								procTypes = []
+								procTypes.push key for key, val of procData
+								write "-----> Procfile declares types -> #{procTypes.join ' '}\n"
+								write "-----> Compiled slug size: #{filesize buildData.slug.size}\n"
+								console.log JSON.stringify(result: buildData) + "\n"
+								res.write JSON.stringify(result: buildData) + "\n"
+								res.end()
 

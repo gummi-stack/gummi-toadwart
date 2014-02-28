@@ -135,7 +135,7 @@ clean_container()
 
 log () {
 	echo $@ | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
-	echo $@
+	# echo $@
 }
 
 run_container()
@@ -156,9 +156,11 @@ run_container()
 
 	# TODO presmerovavat  2>&1 kdyz neni rendezvous
 
-	echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" $CMD
+	# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" $CMD
 	if [ "$LXC_RENDEZVOUS" = 1 ]; then
 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " # | $RLOGR -t -s $LOG_CHANNEL -a
+		# echo "----> " lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+
 		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
 		# echo $CMD
 	    # # | $RLOGR -t -s $LOG_CHANNEL -a
