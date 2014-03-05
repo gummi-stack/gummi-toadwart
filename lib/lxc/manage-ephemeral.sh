@@ -134,6 +134,12 @@ clean_container()
 
 # LOG_APP=`echo hera/mertrics-api | tr '/' '\/'`
 
+
+# log2() {
+# 	echo $@ | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
+#
+# }
+
 log () {
 	# echo $@ | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
 
@@ -188,9 +194,26 @@ run_container()
 #		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
 
-
+		# env
 		# funguje ale zvraci sracky
-		gummi-prefixer GUMMI "app $LOG_APP web.1" lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+		# echo gummi-prefixer GUMMI "app $LOG_APP web.1" lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+# 		gummi-prefixer GUMMI "app $LOG_APP web.1" lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+#
+# 		echo xxxxxx
+#
+# 		sleep 10000000
+# 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+		echo "start	"
+			gummi-prefixer GUMMI "asdasdasd as " lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD  2>&1
+
+		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD  2>&1 | sed  -u -e "s/^/`echo $LOG_SOURCE $LOG_APP $LOG_BRANCH $LOG_WORKER` buildXX 1 /" | logger -t GUMMI
+		echo "bum"
+
+
+
+
+
+
 
 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 2>&1 | sed -e "s/^/0.0.0.0 `echo  gummi $REPO` build 1 /"  | logger -t GUMMI
 
