@@ -12,7 +12,7 @@ cson = require 'cson'
 
 psmanager = new PsManager config
 psmanager.on 'remove', (info) ->
-	util.log "Cleaning lxc #{info.name}"
+	# util.log "Cleaning lxc #{info.name}"
 	lxc = new Lxc info.name
 	lxc.dispose()
 
@@ -33,7 +33,8 @@ module.exports = (app, dhcp, storage) ->
 
 	###
 	app.post '/ps/start', express.json(), (req, res, next) ->
-		console.log req.body
+		console.log JSON.stringify req.body
+		console.log "API START #{req.body.name}".green
 		slug = req.body.slug
 		cmd = req.body.cmd
 		env = req.body.env
@@ -41,8 +42,8 @@ module.exports = (app, dhcp, storage) ->
 		userEnv = req.body.userEnv
 		rendezvous = req.body.rendezvous
 		# logApp = req.body.logApp
-		logUuid = req.body.logUuid
-		dynoUuid = req.body.dynoUuid
+		# logUuid = req.body.logUuid
+		# dynoUuid = req.body.dynoUuid
 		hostname = req.body.hostname
 
 
@@ -80,12 +81,21 @@ module.exports = (app, dhcp, storage) ->
 			# 		    process.env[key] = val
 
 			# env.LOG_CHANNEL = logName
-			env.LOG_APP = req.body.logApp
-			env.LOG_CMD = req.body.cmd
 
-			env.LOG_UUID = logUuid
-			env.DYNO_UUID = dynoUuid
-			env.GUMMI_ID = config.id
+			[repo, branch] = req.body.name.split '/'
+
+			env.LOG_APP = repo.replace(/\.git$/, '') #.replace ':', '/'
+			env.LOG_BRANCH = branch
+			env.LOG_SOURCE = "gummi"
+			env.LOG_WORKER = req.body.worker.replace '-', '.'
+
+
+			# env.LOG_APP = req.body.logApp
+			# env.LOG_CMD = req.body.cmd
+			#
+			# env.LOG_UUID = logUuid
+			# env.DYNO_UUID = dynoUuid
+			# env.GUMMI_ID = config.id
 
 			# console.log " =---=-=-= " + env.DYNO_UUID
 
@@ -117,7 +127,7 @@ module.exports = (app, dhcp, storage) ->
 
 				else
 					# console.log '----c-c-c-c'
-					util.log util.inspect env
+					# util.log util.inspect env
 					#							lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
 					lxc.exec cmd, env, (exitCode) ->
 						lxc.dispose () ->
@@ -130,7 +140,9 @@ module.exports = (app, dhcp, storage) ->
 	Kill process by pid
 	###
 	app.post '/ps/kill', express.json(),  (req, res) ->
-		# util.log util.inspect req.body
+		console.log "API kill".red
+
+		util.log util.inspect req.body
 		try
 			throw new Error 'Invalid pid' unless req.body.pid
 			process.kill(req.body.pid * -1)
@@ -288,16 +300,27 @@ module.exports = (app, dhcp, storage) ->
 					rev: p.rev
 					timestamp: new Date
 					slug: slugName
-					# procfile: procData
+					procfile: procData
 
 				env = {}
-				env.LOG_CHANNEL = 'TODOkanalek'
-				env.LOG_APP = 'TODOappka'
+
+				console.log buildData
+				env.LOG_APP = buildData.app.replace(/\.git$/, '') #.replace ':', '/'
+				env.LOG_BRANCH = buildData.branch
+				env.LOG_SOURCE = "deploy"
+				env.LOG_WORKER = "git-build"
+
+				# # env.LOG_SOURCE= "repo"
+
+
+				# env.LOG_CHANNEL = 'TODOkanalek'
+				# env.LOG_APP = 'TODOappka'
 				env.LXC_RENDEZVOUS = 1
 				env.TERM = 'xterm'
-				env.REPO = p.repo
-				env.BRANCH = p.branch
+				# env.REPO = p.repo
+				# env.BRANCH = p.branch
 				env.REV = p.rev
+				console.log env
 
 				# pustim buildpack
 				lxc.exec '/init/buildpack', env, (exitCode) ->

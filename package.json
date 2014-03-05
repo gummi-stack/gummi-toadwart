@@ -26,7 +26,7 @@
     "knox": "~0.8.9",
     "fstream": "~0.1.25",
     "portfinder": "~0.2.1",
-    "fs-cache": "0.0.1",
+    "fs-cache": "~0.0.2",
     "cson": "~1.4.5"
   },
   "engines": {

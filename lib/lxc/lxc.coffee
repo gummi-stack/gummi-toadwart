@@ -23,7 +23,7 @@ class Lxc extends EventEmitter
 			@name = @name.replace "\n", ""
 			@root = "/var/lib/lxc/#{@name}/rootfs/"
 
-			console.log 'setup', 'stdout', stdout
+			console.log 'setup', 'stdout', stdout if stdout
 			# console.log 'setup', 'stderr', stderr
 			cb null, @name
 
@@ -48,10 +48,10 @@ class Lxc extends EventEmitter
 
 
 		p.stdout.on 'data', (data) =>
-			# util.log data
+			util.log data
 			@emit 'data', data
 		p.stderr.on 'data', (data) =>
-			# util.log data
+			util.log data
 			@emit 'data', data
 
 		p.on 'exit', (code) =>

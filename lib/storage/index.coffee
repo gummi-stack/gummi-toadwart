@@ -42,6 +42,7 @@ module.exports = (location) ->
 
 
 	getSlug: (url, dest, done) ->
+		b = new Date
 		timeout = 60 * 60 * 24
 		cachedUrlStream = (url) ->
 			if cache.exists url
@@ -63,7 +64,12 @@ module.exports = (location) ->
 		req = cachedUrlStream url
 		req.pipe(gunzip).pipe(untar)
 
+		untar.on 'error', (err) ->
+			cache.invalidate url
+			done err
 		req.on 'error', (err) ->
+			cache.invalidate url
 			done err
 		untar.on 'end', () ->
+			console.log "took: " + (new Date - b)
 			done()

@@ -71,7 +71,7 @@ setup_container()
 	#cat $LXC_DIR/fstab
 	update_config
 
-	echo $LXC_NAME
+	# echo $LXC_NAME
 }
 
 update_config() {
@@ -114,7 +114,6 @@ do_mount() {
        sudo mount -t aufs -o br=${upper}=rw:${lower}=ro,noplink none ${target}
    else
        sudo mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} none ${target}
-       echo sudo mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} none ${target}
    fi
 }
 
@@ -133,8 +132,21 @@ clean_container()
 	sudo rmdir $OVERLAY_DIR
 }
 
+# LOG_APP=`echo hera/mertrics-api | tr '/' '\/'`
+
 log () {
-	echo $@ | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
+	# echo $@ | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
+
+	# TODO
+	# gummi build
+	# gummi web.1
+
+
+	gummi-prefixer GUMMI "$LOG_SOURCE $LOG_APP $LOG_BRANCH $LOG_WORKER" echo $@ > /dev/null
+
+
+	# echo $@ | sed -e "s/^/dyno $LOG_APP web.1 0 /"  | logger -t GUMMI
+	# echo $@ | sed -e "s/^/dyno $LOG_APP web.1 0 /"  | logger -t GUMMI
 	# echo $@
 }
 
@@ -145,7 +157,8 @@ run_container()
 	# echo $CMD
 	# echo asdasda asd | logger -t GUMMI
 	# echo gummi-prefixer GUMMI gummi $REPO dyno.1 echo "Starting container $LXC_NAME for $LOG_APP: $LOG_CMD"
-	log "Starting container $LXC_NAME for $REPO: $CMD"
+	# mertrics-api |  dyno |  web.1  | 0 |
+	log "Starting container $LXC_NAME -- $CMD"
 	# echo "Starting container $LXC_NAME for $REPO: $CMD" | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
 
 	# gummi-prefixer GUMMI $REPO dyno.1 ls -la
@@ -161,17 +174,38 @@ run_container()
 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " # | $RLOGR -t -s $LOG_CHANNEL -a
 		# echo "----> " lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
 
+
+
 		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+		# gummi-prefixer GUMMI "nevim $LOG_APP run.1" lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+
+
+
+
 		# echo $CMD
 	    # # | $RLOGR -t -s $LOG_CHANNEL -a
 	else
 #		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
-		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
-		lxc-execute -s lxc.console=none -n $LXC_NAME  -- env ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
+		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
+
+
+		# funguje ale zvraci sracky
+		gummi-prefixer GUMMI "app $LOG_APP web.1" lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+
+		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 2>&1 | sed -e "s/^/0.0.0.0 `echo  gummi $REPO` build 1 /"  | logger -t GUMMI
+
+
+		# 2>&1 | sed -e "s/^/`echo gummi $REPO` build 1 xxxx/"  | logger -t GUMMI
+
+		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 2>&1 | sed -e "s/^/`echo gummi $REPO` build 1 xxxx/"  | logger -t GUMMI
+
+		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD 2>&1 | sed -e "s/^/`echo gummi $REPO` build 1 /"  | logger -t GUMMI
+
+		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- env ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
 	fi
 	EXITCODE=$?
 	# echo "Stopped container $LXC_NAME for $LOG_APP" | sed -e "s/^/`echo $(REPO)` dyno\.1 1 /" | logger -t GUMMI
-	log "Stopped container $LXC_NAME for $REPO"
+	log "Stopped container $LXC_NAME"
 
 }
 
