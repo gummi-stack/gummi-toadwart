@@ -16,9 +16,9 @@ for i in [1...net.size - 2]
 	portMap[nip] =
 		publicIp: config.ip
 		publicPort: basePort
-		privatePort: 5000
+		privatePort: basePort
 		privateIp: nip
-	rules.push "#{basePort}:#{nip}:5000"
+	rules.push "#{basePort}:#{nip}:#{basePort}"
 
 rules = rules.join "\n"
 

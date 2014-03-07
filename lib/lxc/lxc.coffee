@@ -10,13 +10,13 @@ class Lxc extends EventEmitter
 	constructor: ( @name ) ->
 
 	setup: (lan, name, cb) =>
-		env =
+		@env =
 			LXC_IP: lan.ip
 			LXC_MASK: lan.mask
 			LXC_ROUTE: lan.route
-		@baseEnv = env
+		# @baseEnv = env
 		# process.env.PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games"
-		exec "#{manager} setup #{name}", env: env, (err, stdout, stderr) =>
+		exec "#{manager} setup #{name}", env: @env, (err, stdout, stderr) =>
 			return cb err if err
 
 			@name = name
@@ -28,16 +28,30 @@ class Lxc extends EventEmitter
 			cb null, @name
 
 
+	saveEnv: (env) =>
+		fs = require 'fs'
+
+		s = ""
+		for key, val of @env
+			s += "#{key}=#{val}\n"
+
+		for key, val of env
+			s += "#{key}=#{val}\n"
+
+		# console.log "==========\n#{s}=======\n"
+		# console.log @root + "/init/env"
+		fs.writeFileSync @root + "/init/env", s
+
 	exec: (command, env, cb) =>
-		env.TEMP_PATH = env.PATH
-		env.PATH = process.env.PATH
+		# env.TEMP_PATH = env.PATH
+		# env.PATH = process.env.PATH
 		# util.log '-ev-ev-e-ve-ve-'
 		# util.log util.inspect env
 
-		for key, val of @baseEnv
-			env[key] = val
-
-		p = spawn 'setsid', [manager, 'run', @name, '--', command], {env: env}
+		# for key, val of @baseEnv
+		# 	env[key] = val
+		@saveEnv env
+		p = spawn 'setsid', [manager, 'run', @name, '--', command], {env: @env}
 #		logr = spawn '/root/rlogr/rlogr', ['-t', '-s test2']
 
 #		p.stdout.pipe logr.stdin, {end: yes}
@@ -48,10 +62,10 @@ class Lxc extends EventEmitter
 
 
 		p.stdout.on 'data', (data) =>
-			util.log data
+			# util.log data
 			@emit 'data', data
 		p.stderr.on 'data', (data) =>
-			util.log data
+			# util.log data
 			@emit 'data', data
 
 		p.on 'exit', (code) =>
@@ -61,17 +75,15 @@ class Lxc extends EventEmitter
 
 
 	rendezvous: (command, env,cb) =>
-		env.LXC_RENDEZVOUS = 1
-		env.TEMP_PATH = env.PATH
-		env.PATH = process.env.PATH
+		@env.LXC_RENDEZVOUS = 1
+		@env.PATH = process.env.PATH
 
-		for key, val of @baseEnv
-			env[key] = val
+		@saveEnv env
 
 		# util.log util.inspect env
-		console.log ">>>>>>>>" + command
+		console.log ">>>>>>>>" + command, @env
 
-		child = fork __dirname + '/lxcserver.coffee', [command, @name], {env: env}
+		child = fork __dirname + '/lxcserver.coffee', [command, @name], {env: @env}
 		# child.stdout.on 'data', (data) =>
 		# 	util.log '>>>>>>>> ' + data
 

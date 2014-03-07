@@ -36,7 +36,7 @@ class Dhcp
 
 		@_pool[ip] = null
 		@_lease ip if backup.indexOf(ip) > -1
-		
+
 
 		while ip isnt max
 			pos = 3
@@ -47,8 +47,8 @@ class Dhcp
 			ip = parsed.join('.')
 			@_pool[ip] = null
 			@_lease ip if backup.indexOf(ip) > -1
-		
-		
+
+
 
 	###
 		@return {
@@ -60,10 +60,12 @@ class Dhcp
 		for ip of @_pool
 			if @_pool[ip] is null
 				@_lease ip
-				res = ip: ip
+				res =
+					ip: ip
+					port: @config.portMap[ip]?.privatePort
 				res[key] = @config[key] for key of @config
 				return res
-				
+
 		throw new Error 'IP pool is empty'
 
 

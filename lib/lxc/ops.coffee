@@ -84,11 +84,11 @@ module.exports = (app, dhcp, storage) ->
 
 			[repo, branch] = req.body.name.split '/'
 
-			env.LOG_APP = repo.replace(/\.git$/, '') #.replace ':', '/'
-			env.LOG_BRANCH = branch
-			env.LOG_SOURCE = "gummi"
-			env.LOG_WORKER = req.body.worker.replace '-', '.'
-
+			lxc.env.LOG_APP = repo.replace(/\.git$/, '') #.replace ':', '/'
+			lxc.env.LOG_BRANCH = branch
+			lxc.env.LOG_SOURCE = "gummi"
+			lxc.env.LOG_WORKER = req.body.worker.replace '-', '.'
+			env.TERM = "xterm"
 
 			# env.LOG_APP = req.body.logApp
 			# env.LOG_CMD = req.body.cmd
@@ -112,14 +112,15 @@ module.exports = (app, dhcp, storage) ->
 				# 	fs.unlink tmp, () ->
 				#
 				#
-				port = 5000
+				port = lease.port
 				env.PORT = port
+				# console.log "PPPPPP---", port
 				if rendezvous
 					console.log "EEEEE", cmd, env
 
 					lxc.rendezvous cmd, env, (data) ->
 						# console.log "::#{port}"
-						pso = psmanager.add data.pid, lxc.name, lease.ip, data.port
+						pso = psmanager.add data.pid, lxc.name, lease.ip, data.port, lxc.env
 						# pso.rendezvousPort = "#{data.port}"
 						# pso.rendezvousURI = "tcp://#{config.ip}:#{data.port}"
 						res.json pso
@@ -132,7 +133,7 @@ module.exports = (app, dhcp, storage) ->
 					lxc.exec cmd, env, (exitCode) ->
 						lxc.dispose () ->
 					ipInfo = lease.portMap[lease.ip]
-					pso = psmanager.add lxc.process.pid, name, ipInfo.publicIp, ipInfo.publicPort
+					pso = psmanager.add lxc.process.pid, name, ipInfo.publicIp, ipInfo.publicPort, lxc.env
 					res.json pso
 
 
@@ -229,8 +230,8 @@ module.exports = (app, dhcp, storage) ->
 
 
 			return next err if err
-			console.log 'lx test
-			'
+			# console.log 'lx test
+			# '
 			approot = "#{lxc.root}app"
 			try
 				fs.mkdirSync approot  #todo asi by se to melo hlidat
@@ -242,7 +243,7 @@ module.exports = (app, dhcp, storage) ->
 			catch err
 
 			#mam adresar
-			console.log approot
+			# console.log approot
 
 
 
@@ -315,12 +316,13 @@ module.exports = (app, dhcp, storage) ->
 
 				# env.LOG_CHANNEL = 'TODOkanalek'
 				# env.LOG_APP = 'TODOappka'
-				env.LXC_RENDEZVOUS = 1
+				lxc.env.LXC_RENDEZVOUS = 1
+				lxc.env.TERM = 'xterm'
 				env.TERM = 'xterm'
 				# env.REPO = p.repo
 				# env.BRANCH = p.branch
 				env.REV = p.rev
-				console.log env
+				# console.log env
 
 				# pustim buildpack
 				lxc.exec '/init/buildpack', env, (exitCode) ->
@@ -335,6 +337,7 @@ module.exports = (app, dhcp, storage) ->
 						buffer += data
 
 					lxc.exec '/init/buildpack release', env, (exitCode) ->
+						console.log "Buildpack release failed #{exitCode}".red if exitCode
 						console.log "oxoxxoxoxoxoxo"
 						console.log buffer
 						console.log "oxoxxoxoxoxoxo"

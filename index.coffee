@@ -14,19 +14,23 @@ network = require './lib/network'
 lxc = require './lib/lxc/ops'
 storage = require('./lib/storage/') config.images
 
+
+# syslog.info 'find me in the logs'
+# return
+
+
 fn = util.inspect
 util.inspect = (a, b, c) ->
 	fn a, b, c, yes
 
-util.log "Prepare network ..."
+util.log "Prepare network ...".green
 network.init (err, dhcp) ->
 	if err
 		util.error "Network init crash"
 		process.exit 1
 
 	app = express()
-	# app.use express.json()
-	# app.use express.urlencoded()
+
 	app.use (req, res, next) ->
 		req.headers['content-type'] ?= "application/json; charset=utf-8"
 		req.headers['accept'] ?= "application/json"

@@ -96,10 +96,11 @@ update_config() {
     done
     ) < ${c}.old | sudo tee ${c} >/dev/null
     sudo rm -f ${c}.old
-    cfg=$LXC_DIR/rootfs/init/env
-    echo LXC_IP=$LXC_IP >> $cfg
-    echo LXC_MASK=$LXC_MASK >> $cfg
-    echo LXC_ROUTE=$LXC_ROUTE >> $cfg
+    # cfg=$LXC_DIR/rootfs/init/env
+
+    # echo LXC_IP=$LXC_IP >> $cfg
+    # echo LXC_MASK=$LXC_MASK >> $cfg
+    # echo LXC_ROUTE=$LXC_ROUTE >> $cfg
 
 	# cat $c
 	## TODO zvazit i jine varianty
@@ -174,15 +175,20 @@ run_container()
 	# #####| $DIR/pr -u $DYNO_UUID > $RLOGR
 
 	# TODO presmerovavat  2>&1 kdyz neni rendezvous
-
+	# env
 	# echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" $CMD
 	if [ "$LXC_RENDEZVOUS" = 1 ]; then
 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " # | $RLOGR -t -s $LOG_CHANNEL -a
 		# echo "----> " lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
 
+		# echo "exec RV------"
 
-
+		# echo lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
 		lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+
+		# echo "dasdsaiodjiodjiwodjiqwdjoweq@@@@@@@@"
+		# sleep 10000
+		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD # /init/root release
 		# gummi-prefixer GUMMI "nevim $LOG_APP run.1" lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
 
 
@@ -203,11 +209,13 @@ run_container()
 #
 # 		sleep 10000000
 # 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
-		echo "start	"
-			gummi-prefixer GUMMI "asdasdasd as " lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD  2>&1
+		# echo "start	"
+			gummi-prefixer GUMMI "app $LOG_APP $LOG_BRANCH $LOG_WORKER" lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD
+
+			#2>&1
 
 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD  2>&1 | sed  -u -e "s/^/`echo $LOG_SOURCE $LOG_APP $LOG_BRANCH $LOG_WORKER` buildXX 1 /" | logger -t GUMMI
-		echo "bum"
+		# echo	 "bum"
 
 
 
