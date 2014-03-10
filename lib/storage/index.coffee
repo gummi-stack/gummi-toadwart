@@ -11,9 +11,10 @@ MultiPartUpload = require 'knox-mpu'
 cache = fscache '/tmp/toadwart-slugs/'
 
 
+isDownloading = {}
+
+
 module.exports = (location) ->
-
-
 	put = (from, to, done) ->
 		try
 			client = knox.createClient process.config.s3
@@ -37,11 +38,18 @@ module.exports = (location) ->
 			stream: gzip
 		, done
 
+
 	putSlug: (path, name, done) ->
 		put path, "slugs/#{name}", done
 
 
 	getSlug: (url, dest, done) ->
+		if isDownloading[url] and Array.isArray isDownloading[url]
+			isDownloading[url].push done
+			return
+
+		isDownloading[url] = [done]
+
 		b = new Date
 		timeout = 60 * 60 * 24
 		cachedUrlStream = (url) ->
@@ -54,8 +62,6 @@ module.exports = (location) ->
 			r.pipe cache.put(url, expire: timeout)
 			r
 
-
-
 		gunzip = zlib.Gunzip()
 		untar = tar.Extract
 			path: dest
@@ -66,10 +72,16 @@ module.exports = (location) ->
 
 		untar.on 'error', (err) ->
 			cache.invalidate url
-			done err
+			while done = isDownloading[url].pop()
+				done err
+
 		req.on 'error', (err) ->
 			cache.invalidate url
-			done err
+			while done = isDownloading[url].pop()
+				done err
+
 		untar.on 'end', () ->
 			console.log "took: " + (new Date - b)
-			done()
+			while done = isDownloading[url].pop()
+				done err
+
