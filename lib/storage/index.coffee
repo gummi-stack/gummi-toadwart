@@ -83,5 +83,5 @@ module.exports = (location) ->
 		untar.on 'end', () ->
 			console.log "took: " + (new Date - b)
 			while done = isDownloading[url].pop()
-				done err
+				done()
 
