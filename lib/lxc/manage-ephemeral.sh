@@ -125,7 +125,7 @@ clean_container()
 	LXC_NAME=$1
 	setup_variables
 
-	lxc-stop -n $LXC_NAME  # aby se zabranilo hnilobe
+	lxc-stop -n $LXC_NAME || true  # aby se zabranilo hnilobe
 	sudo umount $EPHEMERAL_BIND_DIR
 	sudo umount $LXC_DIR
 	sudo umount $OVERLAY_DIR
@@ -270,12 +270,10 @@ elif [ "$action" = "clean" ]; then
 
 elif [ "$action" = "cleanall" ]; then
 	# exclude running and frozen
-	CONTAINERS=$(lxc-ls | grep -v master | tr -d "\n")
+	CONTAINERS=$(lxc-ls | grep -v master | tr "\n" " ")
 	for container in $CONTAINERS; do
-		if [[ $container =~ child-temp.* ]]; then
-			clean_container $container
-			echo $container removed
-		fi
+		clean_container $container
+		echo $container removed
 	done
 else
 	echo "usage: $0 [setup|run|clean|cleanall] <name> -- <command>"
