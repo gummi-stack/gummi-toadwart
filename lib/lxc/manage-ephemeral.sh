@@ -270,7 +270,7 @@ elif [ "$action" = "clean" ]; then
 
 elif [ "$action" = "cleanall" ]; then
 	# exclude running and frozen
-	CONTAINERS=$(lxc-list | tr -d "\n" | sed "s/.*STOPPED //g")
+	CONTAINERS=$(lxc-ls | grep -v master | tr -d "\n")
 	for container in $CONTAINERS; do
 		if [[ $container =~ child-temp.* ]]; then
 			clean_container $container
