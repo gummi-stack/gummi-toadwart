@@ -54,10 +54,10 @@ module.exports = (app, dhcp, storage) ->
 		lxc = new Lxc
 
 		lxc.on 'data', (data) ->
-			# util.print "dada " + data
+			util.print "dada " + data
 
 		lxc.on 'error', (data) ->
-			# util.print 'ERR: ' + data
+			util.print 'ERR: ' + data
 
 			# lxc.on 'exit', (code) ->
 			# 	util.print 'EXIT: ' + code
@@ -127,7 +127,7 @@ module.exports = (app, dhcp, storage) ->
 
 
 				else
-					# console.log '----c-c-c-c'
+					console.log '----c-c-c-c'
 					# util.log util.inspect env
 					#							lxc.exec '/buildpacks/startup /app run ' + cmd, env, (exitCode) ->
 					lxc.exec cmd, env, (exitCode) ->
@@ -163,14 +163,15 @@ module.exports = (app, dhcp, storage) ->
 
 	## TEST
 	app.get '/ps/status', (req, res) ->
-		res.json
-			name: config.name
-			id: config.id
-			# ip: config.ip
-			port: config.port
-			containersCount: psmanager.getCount()
-			motd: 'You bitch'
-			processes: psmanager.pids
+		psmanager.loadStats (err, stats) ->
+			res.json
+				name: config.name
+				id: config.id
+				# ip: config.ip
+				port: config.port
+				containersCount: psmanager.getCount()
+				motd: 'You bitch'
+				processes: stats
 	# exec "ps #{req.query.pid}", (error, stdout, stderr) ->
 	# 	res.end stdout
 
