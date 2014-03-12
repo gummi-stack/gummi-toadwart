@@ -17,7 +17,7 @@ class Lxc extends EventEmitter
 		# @baseEnv = env
 		# process.env.PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games"
 		exec "#{manager} setup #{name}", env: @env, (err, stdout, stderr) =>
-			return cb err if err
+			return cb(stdout + stderr) if err
 
 			@name = name
 			@name = @name.replace "\n", ""

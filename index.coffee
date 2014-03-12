@@ -39,6 +39,10 @@ network.init (err, dhcp) ->
 
 
 	app.use app.router
+	app.use (err, req, res, next) ->
+		return next err if req.headers.accept.toLowerCase() isnt 'application/json'
+		res.json error: err.trim()
+
 	app.use express.errorHandler()
 
 	lxc app, dhcp, storage

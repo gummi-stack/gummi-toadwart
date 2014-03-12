@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+#set -x
 
 # env
 
@@ -13,7 +14,7 @@ UNION="overlayfs"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ "$DYNO_UUID" = "" ]; then
-    DYNO_UUID=unknown-manage
+	DYNO_UUID=unknown-manage
 fi
 
 
@@ -26,11 +27,11 @@ on_die()
 {
 	echo "Stopped container $LXC_NAME for $LOG_APP" #| $DIR/pr -u $DYNO_UUID > $RLOGR   #$RLOGR  -s $LOG_CHANNEL -a dyno
 
-    # Need to exit the script explicitly when done.
-    # Otherwise the script would live on, until system
-    # realy goes down, and KILL signals are send.
-    #
-    exit 0
+	# Need to exit the script explicitly when done.
+	# Otherwise the script would live on, until system
+	# realy goes down, and KILL signals are send.
+	#
+	exit 0
 }
 
 trap 'on_die' TERM
@@ -64,6 +65,11 @@ setup_container()
 	sudo mount -t tmpfs none $EPHEMERAL_BIND_DIR
 
 	# Update the ephemeral lxc's configuration to reflect the new container name.
+	if [ ! -f $LXC_DIR/config ];then
+		echo Missing base_lxc_config
+		exit 1
+	fi
+
 	sudo sed -i -e "s/$LXC_BASE/$LXC_NAME/" $LXC_DIR/fstab $LXC_DIR/config $LXC_DIR/rootfs/etc/hostname $LXC_DIR/rootfs/etc/hosts
 
 	# Update the fstab to have all bind mounts be ephemeral.
@@ -76,12 +82,12 @@ setup_container()
 
 update_config() {
 
-    c=$LXC_DIR/config
-    # change hwaddrs
-    sudo mv ${c} ${c}.old
-    #ip = "172.16.226"$[($RANDOM % 100 + 100)]
-    (
-    while read line; do
+	c=$LXC_DIR/config
+	# change hwaddrs
+	sudo mv ${c} ${c}.old
+	#ip = "172.16.226"$[($RANDOM % 100 + 100)]
+	(
+	while read line; do
 	if [ "${line:0:18}" = "lxc.network.hwaddr" ]; then
 		echo "lxc.network.hwaddr= 00:16:3e:$(openssl rand -hex 3| sed 's/\(..\)/\1:/g; s/.$//')"
 	elif [ "${line:0:21}" = "lxc.network.veth.pair" ]; then
@@ -93,14 +99,14 @@ update_config() {
 	else
 		echo "$line"
 	fi
-    done
-    ) < ${c}.old | sudo tee ${c} >/dev/null
-    sudo rm -f ${c}.old
-    # cfg=$LXC_DIR/rootfs/init/env
+	done
+	) < ${c}.old | sudo tee ${c} >/dev/null
+	sudo rm -f ${c}.old
+	# cfg=$LXC_DIR/rootfs/init/env
 
-    # echo LXC_IP=$LXC_IP >> $cfg
-    # echo LXC_MASK=$LXC_MASK >> $cfg
-    # echo LXC_ROUTE=$LXC_ROUTE >> $cfg
+	# echo LXC_IP=$LXC_IP >> $cfg
+	# echo LXC_MASK=$LXC_MASK >> $cfg
+	# echo LXC_ROUTE=$LXC_ROUTE >> $cfg
 
 	# cat $c
 	## TODO zvazit i jine varianty
@@ -112,9 +118,9 @@ do_mount() {
    upper=$2
    target=$3
    if [ $UNION = "aufs" ]; then
-       sudo mount -t aufs -o br=${upper}=rw:${lower}=ro,noplink none ${target}
+	   sudo mount -t aufs -o br=${upper}=rw:${lower}=ro,noplink none ${target}
    else
-       sudo mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} none ${target}
+	   sudo mount -t overlayfs -oupperdir=${upper},lowerdir=${lower} none ${target}
    fi
 }
 
@@ -195,7 +201,7 @@ run_container()
 
 
 		# echo $CMD
-	    # # | $RLOGR -t -s $LOG_CHANNEL -a
+		# # | $RLOGR -t -s $LOG_CHANNEL -a
 	else
 #		lxc-execute -s lxc.console=none -n $LXC_NAME  -- bash -c ". /init/root $CMD " 2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR
 		# lxc-execute -s lxc.console=none -n $LXC_NAME  -- $CMD ####2>&1 | $DIR/pr -u $LOG_UUID > $RLOGR

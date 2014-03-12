@@ -246,37 +246,16 @@ module.exports = (app, dhcp, storage) ->
 			#mam adresar
 			# console.log approot
 
-
-
-
-					#
-			# req.on 'data', (d) ->
-			# 	console.log d
-			# req.on 'error', (err) ->
-			# 	return next err
-			# req.on 'end', () ->
-			# 	res.json 'xx'
-			zlib = require 'zlib'
-			tar = require 'tar'
-			gzip = zlib.createGunzip()
+			untar = spawn 'tar', ['-xzC', approot]
+			untar.stderr.on 'data', (data) ->
+				console.log 'unpack:', data
 
 			req.resume()
+			req.pipe untar.stdin
 
-			# xx = req.pipe(gzip).pipe process.stdout #.pipe(tar.Extract(approot))
-			# xx = req.pipe(gzip) #.pipe(tar.Extract(approot))
-			fs = require 'fs'
-			# gzip = fs.createWriteStream '/tmp/aaa.tar.gz'
+			untar.on 'close', (code) ->
+				next "Failed to unpack #{approot}. Exit code: #{code}" if code isnt 0
 
-			tarx = tar.Extract(approot)
-			xx = req.pipe(gzip).pipe(tarx)
-
-
-			gzip.on 'error', (err) ->
-				return next err
-			tarx.on 'error', (err) ->
-				return next err
-
-			tarx.on 'end', () ->
 				#
 				# storage.getSlug cacheName, (err, tmp1) ->
 				# 	exec "tar -C #{cachedir}/ -xzf #{tmp1}", (error, stdout, stderr) ->

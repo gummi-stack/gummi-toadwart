@@ -1,11 +1,8 @@
-fs   = require 'fs'
-tar  = require 'tar'
-zlib = require 'zlib'
 knox = require 'knox'
-fstream = require 'fstream'
 request = require 'request'
 fscache = require 'fs-cache'
 MultiPartUpload = require 'knox-mpu'
+{spawn} = require 'child_process'
 
 
 cache = fscache '/tmp/toadwart-slugs/'
@@ -21,21 +18,20 @@ module.exports = (location) ->
 		catch e
 			return done e
 
-		gzip = zlib.Gzip()
+		untar = spawn 'tar', ['-cz', from]
 
-		reader = fstream.Reader({ path: from, type: 'Directory' })
+		untar.stderr.on 'data', (data) ->
+			console.log 'pack:', data
 
-		reader.once 'error', done
-		reader.on 'error', () -> ## suppress other errors
-
-		reader.pipe(tar.Pack())
-			.pipe(gzip)
+		untar.on 'close', (code) ->
+			return done() if code is 0
+			done "Failed to pack #{from}. Exit code: #{code}"
 
 		console.log 'xxxxx22222'
 		upload = new MultiPartUpload
 			client: client
 			objectName: to
-			stream: gzip
+			stream: untar.stdout
 		, done
 
 
@@ -62,26 +58,22 @@ module.exports = (location) ->
 			r.pipe cache.put(url, expire: timeout)
 			r
 
-		gunzip = zlib.Gunzip()
-		untar = tar.Extract
-			path: dest
-			strip: 1
+		untar = spawn 'tar', ['--strip=1', '-xzC', dest]
 
 		req = cachedUrlStream url
-		req.pipe(gunzip).pipe(untar)
+		req.pipe untar.stdin
 
-		untar.on 'error', (err) ->
-			cache.invalidate url
-			while done = isDownloading[url].pop()
-				done err
+		untar.stderr.on 'data', (data) ->
+			console.log 'unpack:', data
 
 		req.on 'error', (err) ->
 			cache.invalidate url
 			while done = isDownloading[url].pop()
 				done err
 
-		untar.on 'end', () ->
+		untar.on 'close', (code) ->
 			console.log "took: " + (new Date - b)
 			while done = isDownloading[url].pop()
-				done()
+				return done() if code is 0
+				done "Failed to unpack #{url}. Exit code: #{code}"
 
