@@ -21,7 +21,7 @@ module.exports = (location) ->
 		untar = spawn 'tar', ['-cz', from]
 
 		untar.stderr.on 'data', (data) ->
-			console.log 'pack:', data
+			console.log 'pack:', data.toString()
 
 		untar.on 'close', (code) ->
 			return done() if code is 0
@@ -64,16 +64,20 @@ module.exports = (location) ->
 		req.pipe untar.stdin
 
 		untar.stderr.on 'data', (data) ->
-			console.log 'unpack:', data
+			console.log 'unpack:', data.toString()
 
 		req.on 'error', (err) ->
 			cache.invalidate url
 			while done = isDownloading[url].pop()
 				done err
+			delete isDownloading[url]
 
 		untar.on 'close', (code) ->
 			console.log "took: " + (new Date - b)
 			while done = isDownloading[url].pop()
-				return done() if code is 0
-				done "Failed to unpack #{url}. Exit code: #{code}"
+				if code is 0
+					done()
+				else
+					done "Failed to unpack #{url}. Exit code: #{code}"
+			delete isDownloading[url]
 

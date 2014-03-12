@@ -248,7 +248,7 @@ module.exports = (app, dhcp, storage) ->
 
 			untar = spawn 'tar', ['-xzC', approot]
 			untar.stderr.on 'data', (data) ->
-				console.log 'unpack:', data
+				console.log 'unpack:', data.toString()
 
 			req.resume()
 			req.pipe untar.stdin
